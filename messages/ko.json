@@ -1,0 +1,23 @@
+{
+  "common": {
+    "appName": "Next.js 보일러플레이트",
+    "loading": "로딩 중...",
+    "error": "오류가 발생했습니다",
+    "notFound": "페이지를 찾을 수 없습니다",
+    "backToHome": "홈으로 돌아가기"
+  },
+  "home": {
+    "title": "홈",
+    "welcome": "Next.js 16 보일러플레이트에 오신 것을 환영합니다",
+    "description": "이 프로젝트는 Next.js 16, TypeScript, Tailwind CSS 등을 사용하여 구축되었습니다."
+  },
+  "nav": {
+    "home": "홈",
+    "about": "소개"
+  },
+  "language": {
+    "ko": "한국어",
+    "en": "English",
+    "switch": "언어 변경"
+  }
+}

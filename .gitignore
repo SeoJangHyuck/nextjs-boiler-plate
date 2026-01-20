@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js
+.next/
+out/
+build/
+
+# Testing
+coverage/
+playwright-report/
+test-results/
+
+# Production
+dist/
+
+# Environment (실제 시크릿 포함 파일)
+.env
+.env.local
+.env.*.local
+
+# 환경별 설정 파일은 예시만 커밋 (.env.dev, .env.qa 등은 템플릿)
+# 실제 시크릿이 포함된 경우 .env.*.local로 생성
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# Vercel
+.vercel

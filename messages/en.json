@@ -1,0 +1,23 @@
+{
+  "common": {
+    "appName": "Next.js Boilerplate",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "notFound": "Page not found",
+    "backToHome": "Back to home"
+  },
+  "home": {
+    "title": "Home",
+    "welcome": "Welcome to Next.js 16 Boilerplate",
+    "description": "This project is built with Next.js 16, TypeScript, Tailwind CSS, and more."
+  },
+  "nav": {
+    "home": "Home",
+    "about": "About"
+  },
+  "language": {
+    "ko": "한국어",
+    "en": "English",
+    "switch": "Change language"
+  }
+}

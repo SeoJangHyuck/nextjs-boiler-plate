@@ -1,0 +1,51 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '배포 환경 선택'
+        required: true
+        type: choice
+        options:
+          - dev
+          - qa
+          - staging
+          - live
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build for ${{ github.event.inputs.environment }}
+        run: pnpm build:${{ github.event.inputs.environment }}
+        env:
+          NEXT_PUBLIC_ENV: ${{ github.event.inputs.environment }}
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+
+      # TODO: 실제 배포 스텝 추가
+      # 예: Vercel, AWS, Docker 등
+      - name: Deploy to ${{ github.event.inputs.environment }}
+        run: |
+          echo "Deploying to ${{ github.event.inputs.environment }} environment"
+          echo "Build completed successfully"
