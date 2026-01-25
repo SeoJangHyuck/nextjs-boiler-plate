@@ -1,0 +1,114 @@
+// 함수 모음
+@use 'sass:math';
+@use './breakpoints' as bp;
+
+/// Number filter
+/// 단위 제거
+/// @param {Number} $n - 단위가 붙은 숫자
+@function get-value($n) {
+  @return math.div($n, $n * 0 + 1);
+}
+
+/// Rem To Pixel
+/// 기준 px은 브라우저 디폴트 16px
+/// @param {Number} $rem - rem 단위
+/// @param {Number} $base-size - 변환 기준 px
+@function rem-to-pixel($rem, $base-size: 16px) {
+  @if math.unit($rem) == 'rem' {
+    @return (get-value($rem) * $base-size);
+  } @else {
+    @return $rem;
+  }
+}
+
+/// Em To Pixel
+/// 기준 px은 브라우저 디폴트 16px
+/// @param {Number} $em - em 단위
+/// @param {Number} $base-size - 변환 기준 px
+@function em-to-pixel($em, $base-size: 16px) {
+  @if math.unit($em) == 'em' {
+    @return (get-value($em) * $base-size);
+  } @else {
+    @return $em;
+  }
+}
+
+/// Pixel To Rem
+/// 기준 px은 브라우저 디폴트 16px
+/// @param {Number} $pixel - px 단위
+/// @param {Number} $base-size - 변환 기준 px
+@function px-to-rem($pixel, $base-size: 16px) {
+  @if math.unit($pixel) == 'px' {
+    // stylelint-disable
+    @return calc(get-value($pixel) / get-value($base-size)) + 0rem;
+    // stylelint-enable
+  } @else {
+    @return $pixel;
+  }
+}
+
+/// Pixel To Em
+/// 기준 px은 브라우저 디폴트 16px
+/// @param {Number} $pixel - px 단위
+/// @param {Number} $base-size - 변환 기준 px
+@function px-to-em($pixel, $base-size: 16px) {
+  @if math.unit($pixel) == 'px' {
+    // stylelint-disable
+    @return calc(get-value($pixel) / get-value($base-size)) + 0em;
+    // stylelint-enable
+  } @else {
+    @return $pixel;
+  }
+}
+
+/// Pixel To mm
+/// 픽셀 기준 mm 변환 ratio 적용
+/// @param {Number} $pixel - px 단위
+/// @param {Number} $mm-px-ratio - mm 변환 비율
+@function px-to-mm($pixel, $mm-px-ratio: 3.7795) {
+  @if math.unit($pixel) == 'px' {
+    // stylelint-disable
+    @return calc(get-value($pixel) / $mm-px-ratio) + 0mm;
+    // stylelint-enable
+  } @else {
+    @return $pixel;
+  }
+}
+
+/// Pixel To VW
+/// 기본 뷰포트 width 2xl(1536px) 너비 기준
+/// @param {Number} $pixel - px 단위
+/// @param {Number} $viewport-size - 기준 viewport 너비
+@function px-to-vw($pixel, $viewport-size: bp.$breakpoint-2xl) {
+  @return calc(($pixel * 100) / $viewport-size) * 1vw;
+}
+
+/// Pixel To VH
+/// 기본 뷰포트 height qhd 높이 길이
+/// @param {Number} $pixel - px 단위
+/// @param {Number} $viewport-size - 기준 viewport 높이
+@function px-to-vh($pixel, $viewport-size: 1440px) {
+  @return calc(($pixel * 100) / $viewport-size) * 1vh;
+}
+
+/// 태블릿 1배수 기준 VW 변환
+/// 최소값 디자인 사이즈 보장
+/// @param {Number} $pixel - px 단위
+@function tablet-vw($pixel) {
+  @if $pixel < 0 {
+    @return min($pixel, px-to-vw($pixel, bp.$breakpoint-tablet));
+  } @else {
+    @return max($pixel, px-to-vw($pixel, bp.$breakpoint-tablet));
+  }
+}
+
+/// 모바일 1배수 기준 VW 변환
+/// 최소값 디자인 사이즈 보장 (320px 기준)
+/// @param {Number} $pixel - px 단위
+@function mobile-vw($pixel) {
+  @if $pixel < 0 {
+    @return min($pixel, px-to-vw($pixel, bp.$breakpoint-mobile-min));
+  } @else {
+    @return max($pixel, px-to-vw($pixel, bp.$breakpoint-mobile-min));
+  }
+}

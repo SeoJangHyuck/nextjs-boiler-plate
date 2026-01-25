@@ -1,0 +1,178 @@
+// ==========================================================================
+// Colors
+// 색상 변수 및 테마 정의
+// ==========================================================================
+
+// -----------------------------------------------------------------------------
+// Color Chip - Primary Colors
+// -----------------------------------------------------------------------------
+
+$green-light: #28e1bd;
+$green: #00ad9f;
+$blue-light: #18beff;
+$blue: #0060bd;
+$red-light: #fa4751;
+$red: #8b2520;
+$white: #fff;
+$black: #000;
+
+// -----------------------------------------------------------------------------
+// Color Chip - Accent Colors
+// -----------------------------------------------------------------------------
+
+$orange: #ff5900;
+$yellow: #c1c100;
+$aqua: #1aafc2;
+$pink: #ca49d6;
+$lime: #a9cf00;
+$teal: #00c1a0;
+$purple: #7b40f9;
+
+// -----------------------------------------------------------------------------
+// Color Chip - Navy Scale
+// -----------------------------------------------------------------------------
+
+$navy-20: #4e6682;
+$navy-40: #1d4865;
+$navy-50: #003a62;
+$navy-60: #012643;
+$navy-65: #011f33;
+$navy-70: #001726;
+$navy-80: #000e19;
+
+// -----------------------------------------------------------------------------
+// Color Chip - Opacity Colors
+// -----------------------------------------------------------------------------
+
+// White Opacity
+$white-op-70: rgb(255 255 255 / 70%);
+$white-op-50: rgb(255 255 255 / 50%);
+$white-op-30: rgb(255 255 255 / 30%);
+$white-op-10: rgb(255 255 255 / 10%);
+
+// Black Opacity
+$black-op-70: rgb(0 0 0 / 70%);
+
+// Navy Opacity
+$navy-op-95: rgb(0 23 38 / 95%);
+$navy-op-70: rgb(0 23 38 / 70%);
+$navy-op-50: rgb(0 23 38 / 50%);
+
+// Green Opacity
+$green-op-70: rgb(0 173 159 / 70%);
+$green-op-50: rgb(0 173 159 / 50%);
+
+// Blue Opacity
+$blue-op-70: rgb(0 96 189 / 70%);
+$blue-op-50: rgb(0 96 189 / 50%);
+
+// Red Opacity
+$red-op-70: rgb(139 37 32 / 70%);
+$red-op-50: rgb(139 37 32 / 50%);
+
+// Gray
+$gray-60: #1a2e3c;
+$gray-70: #102028;
+
+// -----------------------------------------------------------------------------
+// Semantic Colors - Stroke
+// -----------------------------------------------------------------------------
+
+$stroke-default: $navy-50;
+$stroke-green: $green-light;
+$stroke-blue: $blue-light;
+$stroke-red: $red-light;
+$stroke-orange: $orange;
+$stroke-yellow: $yellow;
+$stroke-aqua: $aqua;
+$stroke-pink: $pink;
+
+// -----------------------------------------------------------------------------
+// CSS Custom Properties (런타임)
+// -----------------------------------------------------------------------------
+
+:root {
+  // Primary
+  --green-light: #{$green-light};
+  --green: #{$green};
+  --blue-light: #{$blue-light};
+  --blue: #{$blue};
+  --red-light: #{$red-light};
+  --red: #{$red};
+  --white: #{$white};
+  --black: #{$black};
+
+  // Accent
+  --orange: #{$orange};
+  --yellow: #{$yellow};
+  --aqua: #{$aqua};
+  --pink: #{$pink};
+  --lime: #{$lime};
+  --teal: #{$teal};
+  --purple: #{$purple};
+
+  // Navy Scale
+  --navy-20: #{$navy-20};
+  --navy-40: #{$navy-40};
+  --navy-50: #{$navy-50};
+  --navy-60: #{$navy-60};
+  --navy-65: #{$navy-65};
+  --navy-70: #{$navy-70};
+  --navy-80: #{$navy-80};
+
+  // Opacity - White
+  --white-op-70: #{$white-op-70};
+  --white-op-50: #{$white-op-50};
+  --white-op-30: #{$white-op-30};
+  --white-op-10: #{$white-op-10};
+
+  // Opacity - Black
+  --black-op-70: #{$black-op-70};
+
+  // Opacity - Navy
+  --navy-op-95: #{$navy-op-95};
+  --navy-op-70: #{$navy-op-70};
+  --navy-op-50: #{$navy-op-50};
+
+  // Opacity - Green
+  --green-op-70: #{$green-op-70};
+  --green-op-50: #{$green-op-50};
+
+  // Opacity - Blue
+  --blue-op-70: #{$blue-op-70};
+  --blue-op-50: #{$blue-op-50};
+
+  // Opacity - Red
+  --red-op-70: #{$red-op-70};
+  --red-op-50: #{$red-op-50};
+
+  // Gray
+  --gray-60: #{$gray-60};
+  --gray-70: #{$gray-70};
+
+  // Semantic - Stroke
+  --stroke-default: #{$stroke-default};
+  --stroke-green: #{$stroke-green};
+  --stroke-blue: #{$stroke-blue};
+  --stroke-red: #{$stroke-red};
+  --stroke-orange: #{$stroke-orange};
+  --stroke-yellow: #{$stroke-yellow};
+  --stroke-aqua: #{$stroke-aqua};
+  --stroke-pink: #{$stroke-pink};
+
+  // Background & Foreground (Dark Theme)
+  --color-background: #{$navy-70};
+  --color-foreground: #{$white};
+  --color-surface: #{$navy-60};
+  --color-surface-hover: #{$navy-50};
+
+  // Text
+  --color-text-primary: #{$white};
+  --color-text-secondary: #{$white-op-70};
+  --color-text-muted: #{$white-op-50};
+  --color-text-disabled: #{$white-op-30};
+
+  // Primary Action
+  --color-primary: #{$green};
+  --color-primary-light: #{$green-light};
+}
