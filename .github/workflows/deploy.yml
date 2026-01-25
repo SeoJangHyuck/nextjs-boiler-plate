@@ -9,12 +9,10 @@ on:
         type: choice
         options:
           - dev
-          - qa
-          - staging
           - live
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
 
@@ -36,16 +34,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build for ${{ github.event.inputs.environment }}
-        run: pnpm build:${{ github.event.inputs.environment }}
-        env:
-          NEXT_PUBLIC_ENV: ${{ github.event.inputs.environment }}
-          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
-          AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
+      - name: Install Vercel CLI
+        run: pnpm add -g vercel@latest
 
-      # TODO: 실제 배포 스텝 추가
-      # 예: Vercel, AWS, Docker 등
-      - name: Deploy to ${{ github.event.inputs.environment }}
-        run: |
-          echo "Deploying to ${{ github.event.inputs.environment }} environment"
-          echo "Build completed successfully"
+      - name: Pull Vercel Environment Information
+        run: vercel pull --yes --environment=${{ github.event.inputs.environment == 'live' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project
+        run: vercel build ${{ github.event.inputs.environment == 'live' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to Vercel
+        run: vercel deploy --prebuilt ${{ github.event.inputs.environment == 'live' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
