@@ -49,9 +49,20 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/explicit-function-return-type': 'off',
       '@typescript-eslint/explicit-module-boundary-types': 'off',
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', fixStyle: 'separate-type-imports' },
+      ],
+      '@typescript-eslint/no-non-null-assertion': 'warn',
 
       // 일반 규칙
       'no-console': ['warn', { allow: ['warn', 'error'] }],
+      'prefer-const': 'error',
+      'prefer-template': 'warn',
+      eqeqeq: ['error', 'always', { null: 'ignore' }],
+      'object-shorthand': ['warn', 'always'],
+      'no-case-declarations': 'error',
+      'no-fallthrough': 'error',
     },
   },
   {

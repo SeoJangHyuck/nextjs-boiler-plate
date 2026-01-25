@@ -19,7 +19,8 @@ const serverEnvSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
     .default('development'),
-  AUTH_SECRET: z.string().min(32).optional(),
+  // TODO: OIDC 연동 시 필수로 변경
+  AUTH_SECRET: z.string().min(1).optional(),
 });
 
 /**
@@ -38,7 +39,7 @@ const envSchema = serverEnvSchema.merge(clientEnvSchema);
 /**
  * 환경 변수 검증 및 export
  */
-function validateEnv() {
+const validateEnv = () => {
   const parsed = envSchema.safeParse({
     NODE_ENV: process.env.NODE_ENV,
     AUTH_SECRET: process.env.AUTH_SECRET,
@@ -55,7 +56,7 @@ function validateEnv() {
   }
 
   return parsed.data;
-}
+};
 
 export const env = validateEnv();
 
@@ -71,8 +72,9 @@ export const clientEnv = {
  * 환경별 유틸리티 함수
  */
 export const isDev = () => env.NEXT_PUBLIC_ENV === AppEnv.DEV;
-export const isQA = () => env.NEXT_PUBLIC_ENV === AppEnv.QA;
+export const isQa = () => env.NEXT_PUBLIC_ENV === AppEnv.QA;
 export const isStaging = () => env.NEXT_PUBLIC_ENV === AppEnv.STAGING;
 export const isLive = () => env.NEXT_PUBLIC_ENV === AppEnv.LIVE;
-export const isProduction = () =>
-  env.NEXT_PUBLIC_ENV === AppEnv.STAGING || env.NEXT_PUBLIC_ENV === AppEnv.LIVE;
+
+/** 프로덕션 환경 여부 (staging, live) */
+export const isProduction = () => isStaging() || isLive();

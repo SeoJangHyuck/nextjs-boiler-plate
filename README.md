@@ -4,22 +4,22 @@ Next.js 16 기반의 범용 스타터 템플릿입니다.
 
 ## 기술 스택
 
-| 분류            | 기술                            | 버전       |
-| --------------- | ------------------------------- | ---------- |
-| 프레임워크      | Next.js (App Router, Turbopack) | 16.1.4+    |
-| 패키지 매니저   | pnpm                            | 10.x       |
-| 언어            | TypeScript (strict)             | 5.x        |
-| 클라이언트 상태 | Zustand                         | 5.x        |
-| 서버 상태       | TanStack Query                  | 5.x        |
-| 스타일링        | Tailwind CSS + SCSS             | 4.x        |
-| 검증            | Zod                             | 4.x        |
-| 다국어          | next-intl                       | 4.x        |
-| 인증            | NextAuth.js                     | 5.x (beta) |
-| 단위 테스트     | Vitest + React Testing Library  | 4.x        |
-| E2E 테스트      | Playwright                      | 1.x        |
-| 린트            | ESLint (flat config)            | 9.x        |
-| 포맷            | Prettier                        | 3.x        |
-| Git Hooks       | Husky + lint-staged             | 9.x        |
+| 분류            | 기술                            | 버전    |
+| --------------- | ------------------------------- | ------- |
+| 프레임워크      | Next.js (App Router, Turbopack) | 16.1.4+ |
+| 패키지 매니저   | pnpm                            | 10.x    |
+| 언어            | TypeScript (strict)             | 5.x     |
+| 클라이언트 상태 | Zustand                         | 5.x     |
+| 서버 상태       | TanStack Query                  | 5.x     |
+| 스타일링        | Tailwind CSS + SCSS             | 4.x     |
+| 검증            | Zod                             | 4.x     |
+| 다국어          | next-intl                       | 4.x     |
+| 인증            | next-auth (OIDC 연동 예정)      | 5.x     |
+| 단위 테스트     | Vitest + React Testing Library  | 4.x     |
+| E2E 테스트      | Playwright                      | 1.x     |
+| 린트            | ESLint (flat config)            | 9.x     |
+| 포맷            | Prettier                        | 3.x     |
+| Git Hooks       | Husky + lint-staged             | 9.x     |
 
 ## 시작하기
 
@@ -56,8 +56,6 @@ pnpm dev              # 개발 서버 시작 (Turbopack)
 # 빌드
 pnpm build            # 기본 빌드
 pnpm build:dev        # dev 환경 빌드
-pnpm build:qa         # qa 환경 빌드
-pnpm build:staging    # staging 환경 빌드
 pnpm build:live       # live 환경 빌드
 
 # 프로덕션
@@ -66,6 +64,8 @@ pnpm start            # 프로덕션 서버 시작
 # 코드 품질
 pnpm lint             # ESLint 검사
 pnpm lint:fix         # ESLint 자동 수정
+pnpm lint:css         # Stylelint 검사
+pnpm lint:css:fix     # Stylelint 자동 수정
 pnpm format           # Prettier 포맷팅
 pnpm format:check     # Prettier 검사
 pnpm type-check       # TypeScript 타입 검사
@@ -87,17 +87,19 @@ src/
 │   │   ├── page.tsx
 │   │   ├── error.tsx
 │   │   ├── loading.tsx
-│   │   └── not-found.tsx
+│   │   ├── not-found.tsx
+│   │   └── login/             # 로그인 페이지
 │   └── api/
-│       └── auth/[...nextauth]/ # NextAuth API 라우트
+│       └── auth/
+│           └── [...nextauth]/ # next-auth API 라우트
 ├── components/
 │   ├── providers.tsx          # React Query Provider
 │   └── ui/                    # 공통 UI 컴포넌트
 ├── hooks/                     # 커스텀 훅
 ├── lib/
 │   ├── api/                   # API 클라이언트 + TanStack Query
-│   ├── auth/                  # NextAuth 설정
 │   ├── i18n/                  # next-intl 설정
+│   ├── auth/                  # next-auth 설정
 │   └── validations/           # Zod 스키마
 ├── stores/                    # Zustand 스토어
 ├── styles/
@@ -112,17 +114,17 @@ src/
 
 ### 배포 환경
 
-| 환경      | 설명           |
-| --------- | -------------- |
-| `dev`     | 로컬 개발 환경 |
-| `qa`      | QA 테스트 환경 |
-| `staging` | 스테이징 환경  |
-| `live`    | 프로덕션 환경  |
+| 환경      | 설명          |
+| --------- | ------------- |
+| `dev`     | 개발 환경     |
+| `qa`      | QA 환경       |
+| `staging` | 스테이징 환경 |
+| `live`    | 프로덕션 환경 |
 
 ### 환경 변수
 
 ```bash
-# .env.local 또는 .env.[환경]
+# .env
 
 # 환경 설정 (dev | qa | staging | live)
 NEXT_PUBLIC_ENV=dev
@@ -130,21 +132,21 @@ NEXT_PUBLIC_ENV=dev
 # 클라이언트 노출 가능
 NEXT_PUBLIC_API_URL=http://localhost:3000/api
 
-# 서버 전용 (시크릿)
-AUTH_SECRET=your-auth-secret-key-min-32-chars
+# next-auth (OIDC 연동 시 설정)
+# AUTH_SECRET=your-auth-secret
 ```
 
 ### 환경별 유틸리티
 
 ```typescript
-import { isDev, isQA, isStaging, isLive, isProduction } from '@/env';
+import { isDev, isLive } from '@/env';
 
 if (isDev()) {
   // 개발 환경에서만 실행
 }
 
-if (isProduction()) {
-  // staging 또는 live 환경에서 실행
+if (isLive()) {
+  // live 환경에서 실행
 }
 ```
 
@@ -208,13 +210,11 @@ const { data, isLoading } = useApiQuery(['users'], '/api/users');
 const mutation = useApiMutation('/api/users', 'post');
 ```
 
-## 인증 (NextAuth)
+## 인증 (next-auth)
 
-인증 구조만 준비되어 있습니다. 실제 구현 시:
+next-auth를 사용하여 인증을 처리합니다. OIDC SDK 연동 예정입니다.
 
-1. `src/lib/auth/auth.config.ts`에서 provider 설정
-2. 로그인/회원가입 페이지 구현
-3. `src/lib/validations/auth.ts`의 스키마 활용
+> **TODO:** 현재 인증 기능은 구현되어 있지 않습니다. OIDC 연동 시 구현 예정입니다.
 
 ## 테스트
 
@@ -259,11 +259,16 @@ GitHub Actions > Deploy > Run workflow에서 환경을 선택하여 배포할 �
 커밋 시 자동으로 다음 검사가 실행됩니다:
 
 - TypeScript/TSX: Prettier 포맷팅 + ESLint 검사
-- JSON/MD/SCSS/CSS: Prettier 포맷팅
+- JSON/MD: Prettier 포맷팅
+- SCSS/CSS: Stylelint 검사 + Prettier 포맷팅
 
 ### ESLint 설정
 
 `eslint.config.js`에서 flat config 방식으로 설정되어 있습니다.
+
+### Stylelint 설정
+
+`stylelint.config.js`에서 SCSS/CSS 스타일 규칙이 설정되어 있습니다.
 
 ### Prettier 설정
 
