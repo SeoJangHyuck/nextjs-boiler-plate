@@ -101,3 +101,67 @@ Claude: *checks for docs/plans/*-design.md*
         → If exists: "기존 설계 문서를 기반으로 실행합니다."
         → If not: "먼저 writing-plans로 설계 문서를 작성해주세요."
 ```
+
+## Task Completion Flow
+
+**IMPORTANT**: Do NOT automatically commit after completing tasks. Always request user review and ask for explicit approval before committing.
+
+### Workflow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Step 1: Complete Task                                          │
+│          → Finish writing/modifying code                        │
+├─────────────────────────────────────────────────────────────────┤
+│  Step 2: Summarize Changes                                      │
+│          → Explain what was changed to the user                 │
+│          → Present list of modified files                       │
+├─────────────────────────────────────────────────────────────────┤
+│  Step 3: Request User Review                                    │
+│          → Ask user to review the changes                       │
+│          → Allow time for user to verify the code               │
+├─────────────────────────────────────────────────────────────────┤
+│  Step 4: Ask for Commit Approval                                │
+│          → Ask if user wants to commit                          │
+│          → Only commit upon explicit user approval              │
+│          → Follow `.claude/rules/git.md` conventions            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Rules
+
+1. **NO Auto-Commit**: Never automatically commit after completing work
+2. **Review First**: Always request user review before committing
+3. **Explicit Approval**: Only commit when user explicitly approves
+4. **Follow Git Rules**: Apply `.claude/rules/git.md` conventions when committing
+
+### Example Interaction
+
+```
+✅ CORRECT Flow:
+Claude: 작업이 완료되었습니다.
+
+        **변경사항:**
+        - `src/components/Button.tsx` - 버튼 컴포넌트 추가
+        - `src/styles/button.scss` - 버튼 스타일 추가
+
+        변경사항을 검토해주세요.
+        검토 완료 후 커밋을 진행할까요?
+
+User: 네, 커밋해주세요.
+
+Claude: `.claude/rules/git.md` 규칙에 따라 커밋을 진행합니다.
+        *proceeds with commit*
+
+❌ WRONG Flow:
+Claude: 작업이 완료되었습니다. 커밋합니다.
+        *automatically commits without asking*
+```
+
+### When User Requests Commit
+
+Even when user directly requests a commit:
+
+1. Present summary of changes
+2. Propose commit message following `.claude/rules/git.md`
+3. Proceed with commit after final confirmation
