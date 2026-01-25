@@ -4,6 +4,7 @@
     "loading": "Loading...",
     "error": "An error occurred",
     "notFound": "Page not found",
+    "notFoundDescription": "The page you requested does not exist or may have been moved.",
     "backToHome": "Back to home"
   },
   "home": {
