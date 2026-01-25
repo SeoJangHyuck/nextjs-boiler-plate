@@ -1,4 +1,1 @@
-import NextAuth from 'next-auth';
-import { authConfig } from './auth.config';
-
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
+// TODO: OIDC 연동 시 인증 모듈 export 추가 예정
