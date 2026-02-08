@@ -108,6 +108,18 @@ src/
 ├── types/                     # 공통 타입 정의
 ├── env.ts                     # 환경 변수 검증
 └── middleware.ts              # 다국어 미들웨어
+
+.agents/
+└── skills/                    # AI 에이전트 스킬 정의
+    ├── vercel-composition-patterns/   # React 컴포지션 패턴
+    ├── vercel-react-best-practices/   # React/Next.js 성능 최적화
+    ├── vercel-react-native-skills/    # React Native 모바일 최적화
+    └── web-design-guidelines/         # 웹 디자인 가이드라인
+
+.claude/
+├── CLAUDE.md                  # Claude Code 프로젝트 가이드라인
+├── rules/                     # 코드 컨벤션 규칙
+└── skills/                    # 에이전트 스킬 (→ .agents/skills 심볼릭 링크)
 ```
 
 ## 환경 설정
@@ -273,6 +285,17 @@ GitHub Actions > Deploy > Run workflow에서 환경을 선택하여 배포할 �
 ### Prettier 설정
 
 `prettier.config.js`에서 설정되어 있으며, Tailwind CSS 클래스 자동 정렬을 지원합니다.
+
+## AI 에이전트 스킬
+
+Vercel 엔지니어링 기반의 AI 에이전트 스킬이 `.agents/skills/`에 정의되어 있으며, `.claude/skills/`에서 심볼릭 링크로 연결됩니다.
+
+| 스킬                          | 설명                                            |
+| ----------------------------- | ----------------------------------------------- |
+| `vercel-react-best-practices` | React/Next.js 성능 최적화 패턴 (렌더링, 번들링) |
+| `vercel-composition-patterns` | React 컴포지션 패턴 (Compound Components 등)    |
+| `vercel-react-native-skills`  | React Native/Expo 모바일 앱 최적화              |
+| `web-design-guidelines`       | 웹 인터페이스 디자인 및 접근성 가이드라인       |
 
 ## 라이선스
 
