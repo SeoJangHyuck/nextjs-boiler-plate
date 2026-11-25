@@ -373,7 +373,7 @@ GitHub Actions > Deploy > Run workflow에서 환경을 선택하여 배포합니
 
 ## AI 에이전트
 
-`AGENTS.md`는 모든 코딩 에이전트가 읽는 공통 지침이고, `CLAUDE.md`와 `.claude/`는 Claude Code 설정입니다. 문서는 한국어로 관리합니다.
+`AGENTS.md`는 모든 코딩 에이전트가 읽는 공통 지침(코드를 둘 곳, 작업별 규칙, 완료 기준)이고, `CLAUDE.md`와 `.claude/`는 Claude Code 설정(스킬·서브에이전트 쓰임, 권한, 훅)입니다. 문서는 한국어로 관리하며, 규칙·스킬·서브에이전트·플러그인이 지침에서 빠지면 `pnpm test:run`이 실패합니다.
 
 ### 플러그인
 
@@ -405,8 +405,8 @@ claude plugin marketplace remove ui-ux-pro-max-skill --scope user
 | `code-review`       | 1.0.1       | PR 코드 리뷰                                                  |
 | `claude-code-setup` | 1.0.0       | 저장소에 맞는 자동화 추천                                     |
 | `typescript-lsp`    | 1.0.0       | TypeScript 언어 서버 (`typescript-language-server` 설치 필요) |
-| `frontend-design`   | 1.1.1       | UI 시각 디자인                                                |
-| `taste-skill`       | 2.5.1       | 랜딩·회사 소개 페이지                                         |
+| `frontend-design`   | 1.1.1       | 화면 디자인 (방향, 타이포그래피, 카피)                        |
+| `taste-skill`       | 2.5.1       | 화면 디자인 (구성, 사진, 움직임, 브라우저 점검)               |
 | `ui-ux-pro-max`     | 2.15.0      | UI/UX 기준 검색과 점검                                        |
 
 ### 스킬

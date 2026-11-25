@@ -44,6 +44,7 @@ scope는 선택이다. 예: `auth` `api` `ui` `i18n` `styles` `deps` `config` `c
 | `release/*` | develop   | develop, main | `release/<version>`              |
 | `hotfix/*`  | main      | develop, main | `hotfix/<ticket>-<description>`  |
 
+- 기능이 아닌 작업은 `feature/` 대신 `fix/`, `refactor/`, `docs/`, `chore/`를 쓰고 나머지는 `feature/*`와 같다.
 - 티켓이 없으면 `<ticket>-`을 생략하고, 개인 이름이나 모호한 이름(`fix/bug`)은 쓰지 않는다.
 - `develop`과 `main`에는 PR로 머지한다. 머지 커밋으로 브랜치 이력을 남기고, `main`의 머지 커밋에는 버전 태그를 단다.
 - `main`에 머지하기 전에 `ci.yml`을 실행해(수동) 통과했는지 확인한다.

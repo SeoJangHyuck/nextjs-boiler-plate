@@ -50,3 +50,5 @@ Thumbs.db
 .claude/settings.local.json
 .claude/worktrees/
 CLAUDE.local.md
+# taste-skill의 작업 파일
+.taste-skill/

@@ -18,6 +18,8 @@ export default defineConfig([
     '.agents/**',
     // 다른 브랜치의 작업 공간
     '.claude/worktrees/**',
+    // taste-skill의 작업 파일
+    '.taste-skill/**',
   ]),
   js.configs.recommended,
   ...nextVitals,
