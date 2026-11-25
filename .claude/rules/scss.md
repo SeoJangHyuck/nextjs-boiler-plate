@@ -1,485 +1,72 @@
 ---
-paths: '**/*.{scss,css}'
+paths:
+  - '**/*.scss'
+  - 'stylelint.config.js'
 ---
 
-# SCSS Conventions
+# SCSS 컨벤션
 
-## Purpose
+## 파일 역할
 
-Standardize styling patterns using BEM methodology and Stylelint for consistent, maintainable CSS. Component-based styling with clear naming conventions.
+| 파일                                                                                | 역할                                       |
+| ----------------------------------------------------------------------------------- | ------------------------------------------ |
+| `globals.scss`                                                                      | 전역 엔트리. 레이아웃에서 한 번만 불러온다 |
+| `_layers.scss`                                                                      | 레이어 순서 선언. 가장 먼저 로드           |
+| `_tokens.scss`                                                                      | `:root` CSS 변수 출력. `globals.scss` 전용 |
+| `_reset.scss`                                                                       | 리셋(`@layer base`)                        |
+| `_colors` `_variables` `_breakpoints` `_typography` `_mixins` `_scroll` `_function` | 변수·믹스인·함수                           |
+| `_utils.scss`                                                                       | 컴포넌트용 묶음. **CSS를 출력하지 않는다** |
 
----
+- `_utils.scss`가 forward하는 파일에 `:root`나 선택자를 쓰지 않는다. 모듈마다 중복 출력된다.
+- 전역 요소 스타일은 `@layer base` 안에만 쓴다.
 
-## File Structure
+## 자동 주입
 
-```
-src/styles/
-├── globals.scss          # 전역 스타일 엔트리 (reset, colors, variables 로드)
-├── tailwind.css          # Tailwind 진입점
-├── _utils.scss           # 컴포넌트용 유틸리티 forward
-├── _reset.scss           # CSS 리셋
-├── _colors.scss          # 색상 변수 및 CSS Custom Properties
-├── _variables.scss       # z-index, spacing, radius, shadows, transitions
-├── _breakpoints.scss     # 반응형 브레이크포인트 및 믹스인
-├── _typography.scss      # 타이포그래피 믹스인
-├── _mixins.scss          # 레이아웃 유틸리티 믹스인
-├── _scroll.scss          # 스크롤바 커스텀 믹스인
-└── _function.scss        # SCSS 유틸리티 함수
+`next.config.ts`의 `sassOptions`가 JS/TSX에서 가져온 SCSS 앞에 `@use 'styles/utils' as *;`를 붙인다. **`@use '@/styles/utils'`를 쓰지 않아도** 변수, 믹스인, 함수를 바로 쓸 수 있다.
 
-src/components/
-└── Card/
-    ├── Card.tsx
-    └── Card.module.scss   # 컴포넌트별 스타일
-```
+- `sass:map` 같은 내장 모듈과 다른 파일은 필요한 곳에서 직접 `@use`한다.
+- 모든 파일에서 쓸 변수나 믹스인을 새 파일로 추가했다면 `_utils.scss`에 `@forward`한다.
+- `@use`로 불러온 부분 파일(`_*.scss`)에는 위치와 관계없이 주입되지 않는다. 필요한 파일을 직접 `@use`한다.
+- 파일 최상위에서 주입된 변수(`$spacing-md` 등)를 다시 선언하면 **오류 없이 값이 덮어써지고** 믹스인에도 영향을 준다. 컴포넌트 전용 변수는 `$card-`처럼 블록 이름을 앞에 붙인다.
+- JS에서 직접 가져온 외부 패키지의 SCSS에도 주입돼 `$blue` 같은 `!default` 변수가 바뀐다. 외부 스타일은 컴파일된 CSS를 가져온다.
 
-### Entry Files
+## 컴포넌트 스타일
 
-- **`globals.scss`**: 전역 스타일 (body, 언어별 설정 등)
-- **`_utils.scss`**: 컴포넌트에서 `@use '@/styles/utils'`로 사용
-
----
-
-## Variables
-
-### Colors (`_colors.scss`)
+CSS 모듈을 컴포넌트 폴더에 두고 BEM으로 이름 짓는다. 예시: `src/components/ui/Spinner/`
 
 ```scss
-// Primary Colors
-$green-light: #28e1bd;
-$green: #00ad9f;
-$blue-light: #18beff;
-$blue: #0060bd;
-
-// Navy Scale
-$navy-20: #4e6682;
-$navy-70: #001726;
-
-// Opacity Colors (모던 CSS 문법)
-$white-op-70: rgb(255 255 255 / 70%);
-$navy-op-50: rgb(0 23 38 / 50%);
-
-// Semantic Colors
-$stroke-default: $navy-50;
-$stroke-green: $green-light;
-
-// CSS Custom Properties
-:root {
-  --color-background: #{$navy-70};
-  --color-text-primary: #{$white};
-  --color-primary: #{$green};
-}
-```
-
-### Z-Index (`_variables.scss`)
-
-NHN 컨벤션 기반: 최소 10, 최대 1000, 10단위 증가
-
-```scss
-$z-index-base: 10;
-$z-index-dropdown: 100;
-$z-index-sticky: 200;
-$z-index-fixed: 300;
-$z-index-modal-backdrop: 400;
-$z-index-modal: 500;
-$z-index-popover: 600;
-$z-index-tooltip: 700;
-$z-index-toast: 800;
-$z-index-max: 1000;
-```
-
-### Spacing & Radius
-
-```scss
-// Spacing
-$spacing-xs: 4px;
-$spacing-sm: 8px;
-$spacing-md: 16px;
-$spacing-lg: 24px;
-$spacing-xl: 32px;
-$spacing-2xl: 48px;
-
-// Border Radius
-$radius-sm: 4px;
-$radius-md: 8px;
-$radius-lg: 12px;
-$radius-xl: 16px;
-$radius-full: 100%;
-```
-
-### Breakpoints (`_breakpoints.scss`)
-
-Mobile-first 반응형 디자인
-
-```scss
-// 브레이크포인트 값
-$breakpoint-mobile-min: 320px; // 최소 지원 너비
-$breakpoint-tablet: 768px;
-$breakpoint-desktop: 1280px;
-
-// 디바이스 타입 믹스인
-@mixin mobile-only {
-  @media (max-width: #{$breakpoint-tablet - 1px}) {
-    @content;
-  }
-}
-
-@mixin tablet {
-  @media (min-width: $breakpoint-tablet) {
-    @content;
-  }
-}
-
-@mixin desktop {
-  @media (min-width: $breakpoint-desktop) {
-    @content;
-  }
-}
-```
-
----
-
-## Mixins
-
-### Typography (`_typography.scss`)
-
-```scss
-@use 'sass:map';
-
-$heading-sizes: (
-  '3xl': (
-    'size': 64px,
-    'line-height': 72px,
-  ),
-  '2xl': (
-    'size': 52px,
-    'line-height': 58px,
-  ),
-  'xl': (
-    'size': 40px,
-    'line-height': 48px,
-  ), // ...
-);
-
-@mixin heading($level, $weight: 700) {
-  $config: map.get($heading-sizes, $level);
-  font-size: map.get($config, 'size');
-  font-weight: $weight;
-  letter-spacing: 0;
-  line-height: map.get($config, 'line-height');
-}
-
-@mixin body($size: 'md', $weight: null) {
-  // ...
-}
-
-@mixin truncate {
-  /* 한 줄 말줄임 */
-}
-@mixin line-clamp($lines: 2) {
-  /* 여러 줄 말줄임 */
-}
-@mixin sr-only {
-  /* 스크린 리더 전용 */
-}
-```
-
-### Layout (`_mixins.scss`)
-
-```scss
-@mixin absolute-center {
-  left: 50%;
-  position: absolute;
-  top: 50%;
-  transform: translate(-50%, -50%);
-}
-
-@mixin fixed-full {
-  inset: 0;
-  position: fixed;
-}
-
-@mixin absolute-full {
-  inset: 0;
-  position: absolute;
-}
-
-@mixin aspect-ratio($width, $height) {
-  aspect-ratio: $width / $height;
-}
-```
-
-### Scroll (`_scroll.scss`)
-
-```scss
-@mixin custom-scrollbar($color: rgb(255 255 255 / 20%), $size: 5px) {
-  &::-webkit-scrollbar {
-    height: $size;
-    width: $size;
-  }
-  // ...
-}
-
-@mixin horizontal-scroll($type: default, $disableScroll: false) {
-  // ...
-}
-
-@mixin no-scroll {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
-}
-```
-
----
-
-## Functions (`_function.scss`)
-
-```scss
-@use 'sass:math';
-@use './breakpoints' as bp;
-
-// 단위 변환
-@function px-to-rem($pixel, $base-size: 16px) {
-  /* ... */
-}
-@function px-to-vw($pixel, $viewport-size: bp.$breakpoint-2xl) {
-  /* ... */
-}
-
-// 디바이스별 VW 변환
-@function tablet-vw($pixel) {
-  /* ... */
-}
-@function mobile-vw($pixel) {
-  /* ... */
-}
-```
-
----
-
-## BEM Methodology
-
-Based on [BEM (Block Element Modifier)](http://getbem.com/).
-
-### Naming Convention
-
-| Concept      | Description          | Naming                                 |
-| ------------ | -------------------- | -------------------------------------- |
-| **Block**    | Standalone component | `.card`, `.button`, `.header`          |
-| **Element**  | Part of a block      | `.card__title`, `.button__icon`        |
-| **Modifier** | Variation or state   | `.card--featured`, `.button--disabled` |
-
-### Examples
-
-```scss
-// ✅ DO: Proper BEM structure
-.button {
-  padding: $spacing-sm $spacing-md;
-  border-radius: $radius-md;
-
-  &__icon {
-    margin-right: $spacing-xs;
-  }
-
-  &--primary {
-    background-color: var(--color-primary);
-    color: var(--white);
-  }
-
-  &--disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-}
-
-// ❌ DON'T: Non-BEM nesting
-.button {
-  .icon {
-  } // Use .button__icon
-  &.primary {
-  } // Use .button--primary
-}
-```
-
----
-
-## CSS Modules with BEM
-
-### Component Style
-
-```scss
-// Button.module.scss
-@use '@/styles/utils' as *;
-
-.button {
+// Card.module.scss
+.card {
   @include body('md');
 
   border-radius: $radius-md;
-  padding: $spacing-sm $spacing-md;
-  transition: var(--transition-fast);
-
-  &__icon {
-    margin-right: $spacing-xs;
-  }
-
-  &--primary {
-    background-color: var(--color-primary);
-    color: var(--white);
-
-    &:hover {
-      background-color: var(--color-primary-light);
-    }
-  }
-
-  &--disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-    pointer-events: none;
-  }
-}
-```
-
-### Usage in Components
-
-```typescript
-import styles from './Button.module.scss';
-import { cn } from '@/lib/utils';
-
-export const Button = ({ variant = 'primary', disabled }: ButtonProps) => {
-  return (
-    <button
-      className={cn(
-        styles.button,
-        styles[`button--${variant}`],
-        disabled && styles['button--disabled']
-      )}
-      disabled={disabled}
-    >
-      {children}
-    </button>
-  );
-};
-```
-
----
-
-## Stylelint Configuration
-
-```javascript
-// stylelint.config.js
-export default {
-  extends: ['stylelint-config-standard-scss'],
-  plugins: ['stylelint-order'],
-  rules: {
-    // BEM pattern
-    'selector-class-pattern': [
-      '^[a-z][a-zA-Z0-9]*(__[a-z][a-zA-Z0-9]*)?(--[a-z][a-zA-Z0-9]*)?$',
-      { message: 'Class names should follow BEM pattern' },
-    ],
-
-    // Alphabetical property order
-    'order/properties-alphabetical-order': true,
-
-    // Max nesting depth
-    'max-nesting-depth': 3,
-
-    // No !important
-    'declaration-no-important': true,
-
-    // No ID selectors
-    'selector-max-id': 0,
-
-    // SCSS patterns
-    'scss/dollar-variable-pattern': '^[a-z][a-z0-9]*(-[a-z0-9]+)*$',
-    'scss/at-mixin-pattern': '^[a-z][a-z0-9]*(-[a-z0-9]+)*$',
-  },
-};
-```
-
----
-
-## Rules
-
-### Property Order
-
-Stylelint이 알파벳 순서를 강제합니다.
-
-```scss
-// ✅ DO: Alphabetical order
-.card {
-  background-color: var(--color-surface);
-  border-radius: $radius-md;
-  display: flex;
   padding: $spacing-md;
-}
-```
 
-### Maximum 3 Levels Nesting
+  &__title {
+    margin-bottom: $spacing-sm;
+  }
 
-```scss
-// ✅ DO: Shallow nesting with BEM
-.card {
-  &__header {
-  }
-  &__body {
-  }
   &--featured {
-  }
-}
-
-// ❌ DON'T: Deep nesting
-.page {
-  .container {
-    .card {
-      .cardHeader {
-      } // Too deep!
-    }
+    border: 1px solid var(--color-primary);
   }
 }
 ```
 
-### Patterns to Avoid
+- Block `.card`, Element `.card__title`, Modifier `.card--featured`. 이름은 camelCase를 쓴다. (린트)
+- 상태와 변형은 중첩 클래스가 아니라 Modifier로 표현한다.
+- 외부 라이브러리의 클래스를 `:global(...)`로 다룰 때는 이유를 적고 그 줄에만 `stylelint-disable-next-line scss/selector-class-pattern`을 둔다.
 
-```scss
-// ❌ DON'T: !important
-.button {
-  color: red !important;
-}
+## 규칙
 
-// ❌ DON'T: ID selectors
-#header {
-}
+- 속성은 알파벳 순서, 중첩은 3단계 이하, `!important`와 ID 선택자는 금지다. (린트)
+- 런타임에 바뀌는 값은 CSS 변수(`var(--color-primary)`), 컴파일 시 정해지는 값은 SCSS 변수를 쓴다.
+- z-index는 `$z-index-*` 토큰만 쓴다(10~1000, 10단위, 예외 시 1단위).
+- 반응형은 모바일 우선이며 `@include tablet`, `@include desktop`을 쓴다.
+- 매직 넘버 대신 토큰이나 함수(`px-to-rem`, `px-to-vw`)를 쓴다.
 
-// ❌ DON'T: Magic numbers
-.modal {
-  top: 47px;
-}
+## 최신 Sass 문법
 
-// ❌ DON'T: Non-BEM naming
-.button-primary {
-} // Use .button--primary
-.cardHeader {
-} // Use .card__header
-```
-
----
-
-## AI Agent Tasks
-
-- **Enforce BEM naming** (block\_\_element--modifier)
-- Validate Stylelint configuration exists
-- Check nesting depth (max 3 levels)
-- Identify `!important` usage and suggest alternatives
-- Verify no ID selectors in component styles
-- Use `@use '@/styles/utils'` for importing variables/mixins
-- Validate CSS Modules follow BEM pattern
-- Ensure modifier classes are used for variants/states
-- Check alphabetical property order
-
-**References**:
-
-- [BEM Methodology](http://getbem.com/)
-- [Stylelint](https://stylelint.io/)
-- [CSS Modules](https://github.com/css-modules/css-modules)
+- `@import` 대신 `@use`/`@forward`, 전역 함수 대신 `map.get`, `math.div`, `color.adjust`를 쓴다.
+- `if($a, $b, $c)` 함수는 폐기됐다. `@if`, `$a or $b`, `if(sass($a): $b; else: $c)`를 쓴다.
+- 변수 사이의 `/`는 나눗셈으로 해석된다. 나눗셈은 `math.div`, 비율 표기는 `#{$w} / #{$h}`를 쓴다.
+- 색상은 `rgb(0 0 0 / 50%)` 표기를 쓴다.

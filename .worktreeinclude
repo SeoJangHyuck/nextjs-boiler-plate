@@ -1,0 +1,2 @@
+# Claude Code가 worktree를 만들 때 복사할 gitignore 대상 파일 (gitignore 문법)
+.env*

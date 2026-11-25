@@ -1,199 +1,58 @@
 ---
 name: reviewing-code
-description: Use when reviewing code changes in a git repository - either current branch vs main, or a specific commit range. Triggers include requests like "코드리뷰 해줘", "review this branch", or "check commits from X to Y".
+description: git 변경사항을 프로젝트 규칙에 따라 점수와 위험도로 리뷰. 현재 브랜치와 베이스 비교, 특정 커밋 범위, 아직 커밋하지 않은 변경을 지원. "코드리뷰 해줘", "이 브랜치 리뷰해줘", "X부터 Y 커밋 확인해줘" 같은 요청에 사용.
+argument-hint: '[베이스 브랜치 | 시작..끝 | 비우면 자동]'
 ---
 
-# Reviewing Code
+# 코드 리뷰
 
-## Overview
+변경된 파일에 해당하는 규칙만 골라 평가한다. 리뷰는 읽기 전용이다. 고치지 말고 근거와 함께 보고한다.
 
-Systematic code review for git changes with scoring system. Only reviews rules applicable to changed files.
+## 1. 범위 결정
 
-## When to Use
+| 상황                               | 명령                                                                 |
+| ---------------------------------- | -------------------------------------------------------------------- |
+| 인자가 커밋 범위 `시작..끝`        | `git diff <시작>^..<끝>` (시작 커밋의 변경도 포함)                   |
+| 인자 범위에 브랜치나 태그가 있음   | `git diff <시작>...<끝>`                                             |
+| 인자가 브랜치 이름, 또는 비어 있음 | `git merge-base origin/<base> HEAD`로 SHA를 구한 뒤 `git diff <SHA>` |
+| 커밋하지 않은 변경만 요청          | `git diff HEAD`                                                      |
 
-- "현재 브랜치 코드리뷰 해줘"
-- "커밋 abc123부터 def456까지 리뷰해줘"
+- `<base>`는 인자로 받은 브랜치다. 없으면 `release/*`, `hotfix/*`에서는 `main`, 그 밖에는 `develop`(원격에 없으면 `main`)이다.
+- 두 명령을 `$(...)`로 합치지 않는다. 권한 검사에 막히거나, SHA를 못 구해도 엉뚱한 범위를 비교한다. SHA를 못 구하면 멈추고 묻는다.
+- SHA와 작업 트리를 비교하므로 커밋하지 않은 변경도 들어간다. 추적하지 않는 파일은 `git ls-files --others --exclude-standard`로 찾아 함께 읽는다.
+- diff와 추적하지 않는 파일이 모두 없으면 멈추고 범위를 묻는다.
 
-## Process Flow
+## 2. 적용할 규칙 고르기
 
-```dot
-digraph code_review {
-  "Determine scope" -> "Get diff";
-  "Get diff" -> "Identify applicable rules";
-  "Identify applicable rules" -> "Read rule files";
-  "Read rule files" -> "Score each rule";
-  "Score each rule" -> "Security & Performance";
-  "Security & Performance" -> "Generate report";
-}
-```
+`.claude/rules/*.md`의 `paths`와 변경 파일을 대조해 해당하는 규칙을 모두 고른다. `paths`가 없는 `git.md`는 커밋이 있을 때 적용한다. 고른 규칙은 **직접 읽은 뒤** 평가한다. 기억으로 평가하지 않는다.
 
-## Step 1: Determine Scope
+## 3. 검증
 
-**Option A - Current branch vs main (default):**
+- 바뀐 동작을 실제로 따라가며 확인한다. 호출하는 쪽과 테스트도 함께 본다.
+- 의심스러운 부분은 실패를 재현하는 입력을 적는다. 재현을 설명할 수 없으면 발견사항으로 올리지 않는다.
+- 다음 항목은 항상 확인한다.
+  - **보안**: 입력 검증, 권한 확인 누락, 비밀 값 노출, 위험한 URL 프로토콜, 서버 전용 코드의 클라이언트 유입
+  - **성능**: 요청 워터폴, 불필요한 `'use client'`, 큰 번들 유입, 캐시 무효화 누락
+  - **테스트**: 바뀐 동작을 잡아내는 테스트가 있는지
 
-```bash
-git diff main...HEAD --stat
-git diff main...HEAD
-```
+## 4. 점수
 
-**Option B - Specific commit range:**
+적용한 규칙마다 10점 만점으로 매기고 감점 사유를 적는다.
 
-```bash
-git log --oneline <start>..<end>
-git diff <start>..<end>
-```
+| 점수 | 의미        | 위험도  |
+| ---- | ----------- | ------- |
+| 10   | 완전히 준수 | -       |
+| 7~9  | 경미한 문제 | 🟢 낮음 |
+| 4~6  | 여러 위반   | 🟡 중간 |
+| 1~3  | 주요 위반   | 🟠 높음 |
+| 0    | 치명적 위반 | 🔴 심각 |
 
-**No changes?** If diff is empty, inform user and ask for clarification.
+종합 점수 = 점수 합계 ÷ (규칙 수 × 10) × 100. 적용한 규칙이 없으면 점수와 등급에 `해당 없음`을 쓴다.
 
-## Step 2: Identify Applicable Rules
+등급: A+ 96 이상, A 90 이상, B 80 이상, C 70 이상, D 60 이상, F 60 미만
 
-**Only evaluate rules that apply to changed files.**
+🔴 심각은 보안·데이터 손실·파괴적 변경, 🟠 높음은 주요 기능·성능, 🟡 중간은 품질·유지보수성, 🟢 낮음은 스타일이다.
 
-| Changed Files                  | Applicable Rules             |
-| ------------------------------ | ---------------------------- |
-| `*.tsx`, `*.ts`                | `typescript.md`, `nextjs.md` |
-| `*.scss`                       | `scss.md`                    |
-| `*.css`, `className=`          | `tailwind.md`                |
-| Commit messages                | `git.md` (always applies)    |
-| `useQuery`, `useMutation`      | `tanstack-query.md`          |
-| `create`, `useStore`           | `zustand.md`                 |
-| `z.object`, `z.string`         | `zod.md`                     |
-| `useTranslations`, `messages/` | `next-intl.md`               |
+## 5. 보고
 
-**Example:** If only `.scss` files changed → evaluate `scss.md` and `git.md` only.
-
-## Step 3: Read & Evaluate Rules
-
-**MUST read the actual rule files, not just Key Checks.**
-
-```bash
-# Read applicable rule files
-cat .claude/rules/typescript.md
-cat .claude/rules/nextjs.md
-# ... etc
-```
-
-### Scoring (10 points per applicable rule)
-
-| Score | Meaning                              |
-| ----- | ------------------------------------ |
-| 10    | Perfect compliance                   |
-| 7-9   | Minor issues (🟢 Low risk)           |
-| 4-6   | Multiple violations (🟡 Medium risk) |
-| 1-3   | Major violations (🟠 High risk)      |
-| 0     | Critical failure (🔴 Critical risk)  |
-
-### Risk Levels
-
-| Icon | Level    | Description                           |
-| ---- | -------- | ------------------------------------- |
-| 🔴   | Critical | Security, data loss, breaking changes |
-| 🟠   | High     | Major functionality, performance      |
-| 🟡   | Medium   | Code quality, maintainability         |
-| 🟢   | Low      | Style, conventions                    |
-
-### Quick Reference (Read actual rules for full details)
-
-| Rule                  | Default Risk | Key Areas                                  |
-| --------------------- | ------------ | ------------------------------------------ |
-| **typescript.md**     | 🟡           | `type` vs `interface`, naming, `any` 금지  |
-| **nextjs.md**         | 🟠           | Server Component, async params, Image/Link |
-| **scss.md**           | 🟢           | BEM, z-index 변수, Mobile-first            |
-| **tailwind.md**       | 🟢           | CSS 변수, 반응형 순서, 다크모드            |
-| **git.md**            | 🟢           | `type(scope): Subject`, 대문자, 명령형     |
-| **tanstack-query.md** | 🟠           | queryKey, staleTime, 에러/로딩 처리        |
-| **zustand.md**        | 🟡           | 슬라이스 패턴, 미들웨어                    |
-| **zod.md**            | 🟠           | `*Schema` 네이밍, `z.infer`, 에러 메시지   |
-| **next-intl.md**      | 🟡           | `useTranslations`, 메시지 구조             |
-
-## Step 4: Security & Performance
-
-| Area            | Check                                               |
-| --------------- | --------------------------------------------------- |
-| **Security**    | Input validation, injection risks, secrets exposure |
-| **Performance** | N+1 queries, unnecessary re-renders, large bundles  |
-
-## Step 5: Generate Report
-
-### Total Score Calculation
-
-**Total = Sum of applicable rule scores / (Applicable rules × 10) × 100**
-
-| Grade | Percentage |
-| ----- | ---------- |
-| A+    | 96-100%    |
-| A     | 90-95%     |
-| B     | 80-89%     |
-| C     | 70-79%     |
-| D     | 60-69%     |
-| F     | < 60%      |
-
-### Report Template
-
-```markdown
-# Code Review Report
-
-**Scope**: [branch name or commit range]
-**Files changed**: [count]
-**Date**: [YYYY-MM-DD]
-
----
-
-## Total Score: [XX]% (Grade: [A+/A/B/C/D/F])
-
-### Applicable Rules ([N] rules evaluated)
-
-| Rule        | Score | Risk   | Issues        |
-| ----------- | ----- | ------ | ------------- |
-| [rule name] | /10   | [icon] | [description] |
-| ...         | ...   | ...    | ...           |
-
-**Not Applicable:** [list rules that don't apply to changes]
-
----
-
-## Findings by Risk Level
-
-### 🔴 Critical
-
-- [None or list]
-
-### 🟠 High
-
-- [None or list]
-
-### 🟡 Medium
-
-- [None or list]
-
-### 🟢 Low
-
-- [None or list]
-
----
-
-## Security
-
-- [Any concerns or "No issues found"]
-
-## Performance
-
-- [Any concerns or "No issues found"]
-
----
-
-## Recommendations
-
-1. **[Must Fix]** - [description]
-2. **[Should Fix]** - [description]
-3. **[Nice to Have]** - [description]
-```
-
-## Common Mistakes
-
-| Mistake                                | Fix                                     |
-| -------------------------------------- | --------------------------------------- |
-| Scoring rules that don't apply         | Only score rules matching changed files |
-| Using Key Checks as complete checklist | Read actual `.claude/rules/*.md` files  |
-| Missing risk assessment                | Every finding needs a risk level        |
-| No score justification                 | Explain deductions in Issues column     |
+[references/report-template.md](references/report-template.md) 형식으로 작성한다. 모든 발견사항에 `파일:줄`과 위험도를 붙이고, 문제가 없으면 없다고 쓴다.

@@ -1,619 +1,87 @@
 ---
-paths: 'src/app/**/*.{ts,tsx}'
+paths:
+  - 'src/app/**/*'
+  - 'src/components/**/*.tsx'
+  - 'src/env/**/*.ts'
+  - 'src/proxy.ts'
+  - 'next.config.ts'
 ---
 
-# Next.js 16+ Conventions
+# Next.js 컨벤션
 
-## Purpose
+## 라우트 구조
 
-Standardize Next.js App Router patterns following official documentation and React 19 best practices. Ensure consistent file structure, component patterns, and data fetching strategies.
-
----
-
-## Project Structure
-
-### Top-Level Folders
-
-| Folder           | Purpose                             |
-| ---------------- | ----------------------------------- |
-| `src/app`        | App Router (routes, layouts, pages) |
-| `src/components` | Shared React components             |
-| `src/lib`        | Utility functions, API clients      |
-| `src/hooks`      | Custom React hooks                  |
-| `src/stores`     | Zustand state stores                |
-| `src/types`      | TypeScript type definitions         |
-| `public`         | Static assets                       |
-
-### App Router File Conventions
-
-| File        | Extension | Purpose                                         |
-| ----------- | --------- | ----------------------------------------------- |
-| `layout`    | `.tsx`    | Shared UI wrapper (persists across navigations) |
-| `page`      | `.tsx`    | Unique route UI (publicly accessible)           |
-| `loading`   | `.tsx`    | Loading UI (Suspense fallback)                  |
-| `error`     | `.tsx`    | Error UI (Error Boundary)                       |
-| `not-found` | `.tsx`    | 404 UI                                          |
-| `route`     | `.ts`     | API endpoint                                    |
-| `template`  | `.tsx`    | Re-rendered layout on navigation                |
-| `default`   | `.tsx`    | Parallel route fallback                         |
-
-```typescript
-// ✅ DO: Proper file structure
+```text
 src/app/
-├── layout.tsx              // Root layout (required)
-├── page.tsx                // Home page (/)
-├── loading.tsx             // Global loading state
-├── error.tsx               // Global error boundary
-├── not-found.tsx           // Global 404
-├── [locale]/
-│   ├── layout.tsx          // Locale layout
-│   ├── page.tsx            // Localized home
-│   └── (auth)/
-│       ├── login/
-│       │   └── page.tsx    // /[locale]/login
-│       └── register/
-│           └── page.tsx    // /[locale]/register
-└── api/
-    └── auth/
-        └── route.ts        // API: /api/auth
-
-// ❌ DON'T: Wrong patterns
-src/app/
-├── pages/                  // Don't use pages/ in app router
-├── LoginPage.tsx           // Must be inside folder with page.tsx
-└── api.ts                  // Must be route.ts inside api/ folder
+├── global-error.tsx          # 루트 레이아웃이 실패했을 때
+├── api/                      # 라우트 핸들러
+└── [locale]/                 # 루트 레이아웃 (html, body)
+    ├── layout.tsx
+    ├── loading.tsx
+    ├── error.tsx
+    ├── not-found.tsx
+    ├── page.tsx
+    └── [...rest]/page.tsx    # 모르는 경로 → notFound()
 ```
 
----
+- `src/app/layout.tsx`를 만들지 않는다. `[locale]/layout.tsx`가 루트 레이아웃이어야 `next/root-params`가 동작한다.
+- 라우트에 속하지 않는 파일은 `_components`, `_lib`처럼 `_` 폴더에 둔다.
 
-## Server vs Client Components
+## 서버와 클라이언트
 
-### Default: Server Components
+- 기본은 서버 컴포넌트다. 이벤트 핸들러, 상태 훅, 브라우저 API가 필요할 때만 `'use client'`를 붙이고 경계를 말단까지 내린다.
+- 서버 전용 모듈(비밀 값, DB)은 파일 첫 줄에 `import 'server-only'`를 둔다.
+- 클라이언트로 넘기는 데이터는 필요한 필드만 고른다. 레코드를 통째로 넘기지 않는다.
 
-All components in App Router are Server Components by default. Only add `'use client'` when absolutely necessary.
+## 요청 정보와 타입
 
-### When to Use Client Components
+- `params`와 `searchParams`는 Promise다. 전역 타입 `PageProps<'/경로'>`, `LayoutProps<'/경로'>`, `RouteContext<'/경로'>`를 쓴다(`pnpm type-check`가 `next typegen`으로 생성).
+- 현재 locale은 `params` 대신 `getLocale()`이나 `useLocale()`로 읽는다.
 
-| Scenario                            | Directive      | Reason                  |
-| ----------------------------------- | -------------- | ----------------------- |
-| Event handlers (onClick, onChange)  | `'use client'` | Browser events          |
-| React hooks (useState, useEffect)   | `'use client'` | Client-side state       |
-| Browser APIs (localStorage, window) | `'use client'` | Not available on server |
-| Third-party client libraries        | `'use client'` | Library requires DOM    |
+## 데이터와 캐시 (Cache Components 사용 중)
 
-```typescript
-// ✅ DO: Server Component (default, no directive needed)
-// src/app/users/page.tsx
-import { getUsers } from '@/lib/api';
+- 데이터 조회는 기본이 동적이다. 캐시할 대상에만 `'use cache'`를 붙이고 `cacheLife`, `cacheTag`로 수명과 무효화 단위를 정한다.
+- 요청 시점에 정해지는 값은 `<Suspense>` 안에서 읽는다. 밖에서 읽으면 빌드가 실패하거나 정적 셸이 사라진다.
+  - 서버: `cookies()`, `headers()`, `searchParams`, 캐시하지 않은 조회, `generateStaticParams`에 없는 `params`
+  - 클라이언트: `useSearchParams`, 동적 경로의 `usePathname`·`useParams`
+- 렌더링 중에 `new Date()`, `Date.now()`, `Math.random()`을 부르지 않는다. 필요하면 `await io()`(`next/cache`) 뒤에 값을 읽는 async 함수를 컴포넌트 밖에 두고 `<Suspense>` 안에서 부른다. 클라이언트에서는 이벤트 핸들러나 구독·타이머 콜백에서 읽는다. `connection()`보다 `io()`를 쓴다.
+- `dynamic`, `dynamicParams`, `revalidate`, `fetchCache`, `runtime`을 내보내지 않는다. Cache Components와 함께 쓰면 빌드가 실패한다.
+- 서로 의존하지 않는 조회는 `Promise.all`로 병렬 실행한다.
 
-export default async function UsersPage() {
-  const users = await getUsers(); // Direct data fetching
-
-  return (
-    <main>
-      <h1>Users</h1>
-      <UserList users={users} />
-    </main>
-  );
-}
-
-// ✅ DO: Client Component (only when needed)
-// src/components/UserForm.tsx
-'use client';
-
-import { useState } from 'react';
-
-export function UserForm() {
-  const [name, setName] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle form submission
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <input value={name} onChange={(e) => setName(e.target.value)} />
-      <button type="submit">Submit</button>
-    </form>
-  );
-}
-
-// ❌ DON'T: Unnecessary 'use client'
-'use client'; // Remove - no client features used
-
-export function UserCard({ user }: { user: User }) {
-  return <div>{user.name}</div>;
-}
-```
-
-### Component Composition Pattern
-
-Push `'use client'` boundary down to leaf components. Keep parent components as Server Components.
-
-```typescript
-// ✅ DO: Server Component with Client islands
-// src/app/dashboard/page.tsx (Server Component)
-import { getDashboardData } from '@/lib/api';
-import { DashboardChart } from '@/components/DashboardChart'; // Client
-import { DashboardStats } from '@/components/DashboardStats'; // Server
-
-export default async function DashboardPage() {
-  const data = await getDashboardData();
-
-  return (
-    <main>
-      <DashboardStats data={data.stats} />      {/* Server */}
-      <DashboardChart chartData={data.chart} /> {/* Client */}
-    </main>
-  );
-}
-
-// ❌ DON'T: Entire page as client component
-'use client';
-
-import { useEffect, useState } from 'react';
-
-export default function DashboardPage() {
-  const [data, setData] = useState(null);
-
-  useEffect(() => {
-    fetch('/api/dashboard').then(res => res.json()).then(setData);
-  }, []);
-
-  // This loses all Server Component benefits
-}
-```
-
----
-
-## Routing Patterns
-
-### Dynamic Routes
-
-```typescript
-// Single parameter: [slug]
-src/app/blog/[slug]/page.tsx        // /blog/my-post
-
-// Catch-all: [...slug]
-src/app/docs/[...slug]/page.tsx     // /docs/a/b/c
-
-// Optional catch-all: [[...slug]]
-src/app/shop/[[...slug]]/page.tsx   // /shop, /shop/a, /shop/a/b
-
-// ✅ DO: Access params correctly (Next.js 16+)
-type Props = {
-  params: Promise<{ slug: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-};
-
-export default async function BlogPost({ params, searchParams }: Props) {
-  const { slug } = await params;
-  const { page } = await searchParams;
-
-  return <article>Post: {slug}</article>;
-}
-
-// ❌ DON'T: Synchronous params (removed in Next.js 16+)
-export default function BlogPost({ params }: { params: { slug: string } }) {
-  // This pattern no longer works in Next.js 16+
-}
-```
-
-### Route Groups
-
-Use parentheses `()` for organization without affecting URL.
-
-```typescript
-// ✅ DO: Logical grouping
-src/app/
-├── (marketing)/
-│   ├── layout.tsx          // Marketing layout
-│   ├── page.tsx            // / (home)
-│   ├── about/
-│   │   └── page.tsx        // /about
-│   └── pricing/
-│       └── page.tsx        // /pricing
-├── (dashboard)/
-│   ├── layout.tsx          // Dashboard layout (authenticated)
-│   ├── overview/
-│   │   └── page.tsx        // /overview
-│   └── settings/
-│       └── page.tsx        // /settings
-└── (auth)/
-    ├── layout.tsx          // Auth layout (minimal)
-    ├── login/
-    │   └── page.tsx        // /login
-    └── register/
-        └── page.tsx        // /register
-```
-
-### Private Folders
-
-Use underscore `_` prefix to exclude from routing.
-
-```typescript
-// ✅ DO: Private components
-src/app/dashboard/
-├── _components/
-│   ├── DashboardHeader.tsx   // Not a route
-│   └── DashboardSidebar.tsx  // Not a route
-├── _lib/
-│   └── dashboard-utils.ts    // Not a route
-├── layout.tsx
-└── page.tsx
-
-// These are NOT accessible via URL
-```
-
----
-
-## Data Fetching
-
-### Server Components (Recommended)
-
-```typescript
-// ✅ DO: Direct fetch in Server Components
-// src/app/users/page.tsx
-async function getUsers() {
-  const res = await fetch('https://api.example.com/users', {
-    cache: 'force-cache',        // Default: cache indefinitely
-    // cache: 'no-store',        // Never cache (dynamic)
-    // next: { revalidate: 60 }, // Revalidate every 60 seconds
-  });
-
-  if (!res.ok) throw new Error('Failed to fetch users');
-  return res.json();
-}
-
-export default async function UsersPage() {
-  const users = await getUsers();
-  return <UserList users={users} />;
-}
-
-// ✅ DO: Parallel data fetching
-export default async function DashboardPage() {
-  const [users, posts, stats] = await Promise.all([
-    getUsers(),
-    getPosts(),
-    getStats(),
-  ]);
-
-  return (
-    <>
-      <UserSection users={users} />
-      <PostSection posts={posts} />
-      <StatsSection stats={stats} />
-    </>
-  );
-}
-```
-
-### Server Actions
-
-```typescript
-// ✅ DO: Server Action in separate file
-// src/app/actions/user.ts
-'use server';
-
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-
-export async function createUser(formData: FormData) {
-  const name = formData.get('name') as string;
-  const email = formData.get('email') as string;
-
-  // Validate
-  if (!name || !email) {
-    return { error: 'Name and email are required' };
-  }
-
-  // Create user
-  await db.user.create({ data: { name, email } });
-
-  // Revalidate and redirect
-  revalidatePath('/users');
-  redirect('/users');
-}
-
-// ✅ DO: Use in form
-// src/app/users/new/page.tsx
-import { createUser } from '@/app/actions/user';
-
-export default function NewUserPage() {
-  return (
-    <form action={createUser}>
-      <input name="name" required />
-      <input name="email" type="email" required />
-      <button type="submit">Create User</button>
-    </form>
-  );
-}
-```
-
----
-
-## Layouts and Templates
-
-### Root Layout (Required)
-
-```typescript
-// ✅ DO: Proper root layout
-// src/app/layout.tsx
-import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
-import './globals.css';
-
-const inter = Inter({ subsets: ['latin'] });
-
-export const metadata: Metadata = {
-  title: {
-    template: '%s | My App',
-    default: 'My App',
-  },
-  description: 'My application description',
-};
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return (
-    <html lang="en">
-      <body className={inter.className}>
-        {children}
-      </body>
-    </html>
-  );
-}
-```
-
-### Nested Layouts
-
-```typescript
-// ✅ DO: Dashboard layout with auth check
-// src/app/(dashboard)/layout.tsx
-import { redirect } from 'next/navigation';
-import { getSession } from '@/lib/auth';
-import { DashboardNav } from '@/components/DashboardNav';
-
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const session = await getSession();
-
-  if (!session) {
-    redirect('/login');
-  }
-
-  return (
-    <div className="flex">
-      <DashboardNav user={session.user} />
-      <main className="flex-1">{children}</main>
-    </div>
-  );
-}
-```
-
----
-
-## Metadata and SEO
-
-```typescript
-// ✅ DO: Static metadata
-export const metadata: Metadata = {
-  title: 'About Us',
-  description: 'Learn about our company',
-  openGraph: {
-    title: 'About Us',
-    description: 'Learn about our company',
-    images: ['/og-about.png'],
-  },
-};
-
-// ✅ DO: Dynamic metadata
-export async function generateMetadata({
+```tsx
+export default function PostPage({
   params,
-}: {
-  params: Promise<{ slug: string }>;
-}): Promise<Metadata> {
-  const { slug } = await params;
-  const post = await getPost(slug);
-
-  return {
-    title: post.title,
-    description: post.excerpt,
-    openGraph: {
-      title: post.title,
-      description: post.excerpt,
-      images: [post.coverImage],
-    },
-  };
-}
-```
-
----
-
-## Loading and Error States
-
-```typescript
-// ✅ DO: Loading UI with skeleton
-// src/app/users/loading.tsx
-import { Skeleton } from '@/components/ui/Skeleton';
-
-export default function UsersLoading() {
+}: PageProps<'/[locale]/posts/[slug]'>) {
   return (
-    <div className="space-y-4">
-      <Skeleton className="h-8 w-48" />
-      <div className="grid gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-24" />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ✅ DO: Error boundary with recovery
-// src/app/users/error.tsx
-'use client';
-
-import { useEffect } from 'react';
-
-export default function UsersError({
-  error,
-  reset,
-}: {
-  error: Error & { digest?: string };
-  reset: () => void;
-}) {
-  useEffect(() => {
-    console.error(error);
-  }, [error]);
-
-  return (
-    <div className="text-center py-12">
-      <h2 className="text-xl font-bold">Something went wrong!</h2>
-      <p className="text-gray-600 mt-2">{error.message}</p>
-      <button
-        onClick={reset}
-        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
-      >
-        Try again
-      </button>
-    </div>
+    <Suspense fallback={<PostSkeleton />}>
+      {params.then(({ slug }) => (
+        <Post slug={slug} />
+      ))}
+    </Suspense>
   );
 }
 ```
 
----
+## 변경 (Server Action)
 
-## Component Naming Conventions
+- 액션마다 입력을 Zod로 검증하고 권한을 다시 확인한다. 화면이나 proxy에서 막았다는 사실에 기대지 않는다.
+- 예상한 실패는 throw하지 말고 값으로 반환해 `useActionState`로 표시한다.
+- 변경 후 자기 화면에 바로 보여야 하면 `updateTag`, 나중에 갱신돼도 되면 `revalidateTag(tag, 'max')`를 쓴다.
 
-```typescript
-// ✅ DO: Consistent naming
-// Files: PascalCase for components
-UserProfile.tsx
-DashboardHeader.tsx
-AuthProvider.tsx
+## 오류와 404
 
-// Components: Match filename
-export function UserProfile() {}
-export function DashboardHeader() {}
-export function AuthProvider() {}
+- `error.tsx`의 props는 `error: unknown`, `retry: () => void`다. 다시 시도는 `reset`이 아니라 `retry`를 쓴다.
+- 오류 문구에 `error.message`를 그대로 보여 주지 않는다. 화면 문구는 번역 메시지를 쓴다.
+- 페이지의 `notFound()`는 프리렌더 중에 부르면 404, 요청 시점에 부르면 200과 `noindex`로 응답한다. 요청 시점에도 404가 필요하면 `src/proxy.ts`에서 먼저 확인한다. 라우트 핸들러에서는 항상 404다.
+- 개발 서버는 요청 시점에 렌더링하므로 상태 코드는 프로덕션 빌드로 확인한다.
 
-// Hooks: camelCase with use prefix
-useAuth.ts       → export function useAuth() {}
-useLocalStorage.ts → export function useLocalStorage() {}
+## proxy
 
-// Utils: camelCase
-formatDate.ts    → export function formatDate() {}
-validateEmail.ts → export function validateEmail() {}
+- `src/proxy.ts`는 locale 처리와 낙관적 검사만 한다. 느린 조회나 최종 인가를 넣지 않는다.
 
-// Types: PascalCase
-types/user.ts    → export type User = {}
-types/api.ts     → export type ApiResponse<T> = {}
+## 설정과 보안
 
-// ❌ DON'T: Inconsistent naming
-user-profile.tsx          // Use PascalCase for components
-dashboardHeader.tsx       // Capitalize first letter
-UseAuth.ts                // Hooks should be camelCase
-```
-
----
-
-## Security: CVE-2025-55182 (Critical)
-
-### Vulnerability Overview
-
-| Item     | Details                              |
-| -------- | ------------------------------------ |
-| CVE      | CVE-2025-55182 (also CVE-2025-66478) |
-| Severity | **CVSS 10.0 (Critical)**             |
-| Type     | Remote Code Execution (RCE)          |
-| Affected | React Server Components in Next.js   |
-
-### Vulnerable Versions (DO NOT USE)
-
-```typescript
-// ❌ NEVER use these versions - Critical RCE vulnerability
-
-// React (vulnerable)
-"react": "19.0.0"    // Vulnerable
-"react": "19.1.0"    // Vulnerable
-"react": "19.1.1"    // Vulnerable
-"react": "19.2.0"    // Vulnerable
-
-// Next.js (vulnerable)
-"next": "14.3.0-canary.77"  // and later canary releases
-"next": "15.x"              // All 15.x versions before patch
-"next": "16.x"              // All 16.x versions before patch
-```
-
-### Required Minimum Versions
-
-```typescript
-// ✅ DO: Use patched versions only
-
-// package.json
-{
-  "dependencies": {
-    "react": "^19.2.1",      // Minimum: 19.2.1
-    "react-dom": "^19.2.1",  // Minimum: 19.2.1
-    "next": "^16.0.1"        // Check latest patched version
-  }
-}
-```
-
-### Version Check Script
-
-```bash
-# Check current versions
-pnpm list react react-dom next
-
-# Update to safe versions
-pnpm update react react-dom next
-```
-
-### AI Agent Security Tasks
-
-When reviewing or creating Next.js projects:
-
-1. **BLOCK** any `package.json` with vulnerable React versions (19.0.0, 19.1.0, 19.1.1, 19.2.0)
-2. **BLOCK** any `package.json` with unpatched Next.js 15.x or 16.x
-3. **WARN** if React version is below 19.2.1
-4. **VERIFY** patched versions before any deployment recommendation
-
-```typescript
-// ✅ DO: Validate versions in package.json
-const VULNERABLE_REACT = ['19.0.0', '19.1.0', '19.1.1', '19.2.0'];
-const MIN_SAFE_REACT = '19.2.1';
-
-// Check before proceeding with any React Server Component work
-```
-
-### References
-
-- [Google Cloud Security Bulletin](https://cloud.google.com/blog/ko/products/identity-security/responding-to-cve-2025-55182)
-- [Next.js Security Advisory](https://nextjs.org/blog/CVE-2025-66478)
-- [React Fix Commit](https://github.com/facebook/react/commit/7dc903cd29dac55efb4424853fd0442fef3a8700)
-
----
-
-## AI Agent Tasks for Next.js Development
-
-- **[CRITICAL] Check React/Next.js versions for CVE-2025-55182 vulnerability**
-- Verify file structure follows App Router conventions
-- Check Server vs Client Component boundaries
-- Validate `'use client'` usage (only when necessary)
-- Ensure proper data fetching patterns (Server Components preferred)
-- Check async params/searchParams usage (Next.js 16+ patterns)
-- Validate layout and loading/error boundary placement
-- Review metadata configuration for SEO
-- Suggest component composition improvements
-- Identify opportunities to move client components to server
-
-**Reference**: [Next.js Documentation](https://nextjs.org/docs)
+- 환경 변수를 추가할 때는 `src/env/schema.ts`의 스키마와 `parseEnv`에 함께 넣는다. 브라우저로 나가는 값(`NEXT_PUBLIC_`)은 `src/env/index.ts`에도 넣고 `@/env`에서, 비밀 값은 `@/env/server`에서 가져온다.
+- 공통 보안 헤더는 `next.config.ts`의 `securityHeaders`에서 관리한다. 외부 리소스를 추가하면 CSP를 함께 확인한다.
+- 이미지는 `next/image`, 글꼴은 `next/font`를 쓴다. 외부 이미지는 `images.remotePatterns`에 정확한 호스트만 허용한다.
+- 메타데이터는 `generateMetadata`에서 번역 메시지로 만든다.

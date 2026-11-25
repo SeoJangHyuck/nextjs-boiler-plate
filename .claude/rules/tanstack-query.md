@@ -1,524 +1,76 @@
 ---
 paths:
-  - '**/hooks/**/*.ts'
-  - '**/lib/api/**/*.ts'
-  - '**/queries/**/*.ts'
+  - 'src/lib/api/**/*.ts'
+  - 'src/hooks/**/*.ts'
+  - 'src/queries/**/*.ts'
+  - 'src/app/**/*.tsx'
+  - 'src/components/**/*.tsx'
 ---
 
-# TanStack Query 5.0 Conventions
+# TanStack Query 컨벤션
 
-## Purpose
+## 구성
 
-Enforce consistent server state management with TanStack Query v5. Provides data fetching, caching, synchronization, and optimistic updates. Aligned with Next.js App Router and React 19.
+- `QueryClient`는 모듈 최상위에서 만들지 않는다(요청 간 캐시 공유). Provider와 서버 컴포넌트는 `getQueryClient()`, 클라이언트 컴포넌트는 `useQueryClient()`로 얻는다.
+- 서버 환경 판별은 `environmentManager.isServer()`를 쓴다. `isServer`는 폐기 예정이다.
+- `gcTime`을 전역으로 지정하지 않는다. 서버에서 요청이 끝난 캐시가 메모리에 남는다.
+- `apiClient`는 `{ data, success }` 형식의 응답을 전제로 `data`만 반환한다. 내용이 없으면 `null`이고, 형식이 다르거나 실패한 응답은 `ApiError`(`@/lib/api`)로 던진다. 네트워크 오류와 구분하려면 `error instanceof ApiError`로 확인한다.
 
----
+## 쿼리 정의
 
-## Provider Setup
+키와 함수를 `queryOptions`로 묶어 훅, 프리페치, 무효화에서 함께 쓴다. 한 곳에서만 쓰는 단순 조회는 `useApiQuery`를 써도 된다.
 
-### QueryClientProvider
-
-```typescript
-// ✅ DO: Create provider with proper configuration
-// app/providers.tsx
-'use client';
-
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState, type ReactNode } from 'react';
-
-type ProvidersProps = {
-  children: ReactNode;
-};
-
-export const Providers = ({ children }: ProvidersProps) => {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 60 * 1000, // 1 minute
-            gcTime: 5 * 60 * 1000, // 5 minutes (formerly cacheTime)
-            retry: 1,
-            refetchOnWindowFocus: false,
-          },
-          mutations: {
-            retry: 0,
-          },
-        },
-      })
-  );
-
-  return (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      <ReactQueryDevtools initialIsOpen={false} />
-    </QueryClientProvider>
-  );
-};
-
-// ❌ DON'T: Create QueryClient outside component (SSR issues)
-const queryClient = new QueryClient(); // Bad for SSR
-```
-
----
-
-## Query Keys
-
-### Structured Query Keys
-
-```typescript
-// ✅ DO: Use query key factory pattern
-export const userKeys = {
-  all: ['users'] as const,
-  lists: () => [...userKeys.all, 'list'] as const,
-  list: (filters: UserFilters) => [...userKeys.lists(), filters] as const,
-  details: () => [...userKeys.all, 'detail'] as const,
-  detail: (id: string) => [...userKeys.details(), id] as const,
-};
-
-export const postKeys = {
-  all: ['posts'] as const,
-  lists: () => [...postKeys.all, 'list'] as const,
-  list: (filters: PostFilters) => [...postKeys.lists(), filters] as const,
-  details: () => [...postKeys.all, 'detail'] as const,
-  detail: (id: string) => [...postKeys.details(), id] as const,
-  byUser: (userId: string) => [...postKeys.all, 'user', userId] as const,
-};
-
-// Usage
-useQuery({ queryKey: userKeys.detail(userId), queryFn: ... });
-queryClient.invalidateQueries({ queryKey: userKeys.lists() });
-
-// ❌ DON'T: Use string keys
-useQuery({ queryKey: ['user', userId], queryFn: ... }); // Hard to maintain
-useQuery({ queryKey: `user-${userId}`, queryFn: ... }); // Invalid format
-```
-
----
-
-## useQuery
-
-### Basic Usage
-
-```typescript
-// ✅ DO: Use useQuery with proper typing
-import { useQuery } from '@tanstack/react-query';
-
-type User = {
-  id: string;
-  name: string;
-  email: string;
-};
-
-export const useUser = (userId: string) => {
-  return useQuery({
-    queryKey: userKeys.detail(userId),
-    queryFn: async (): Promise<User> => {
-      const response = await fetch(`/api/users/${userId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch user');
-      }
-      return response.json();
-    },
-    enabled: !!userId, // Only fetch when userId exists
-  });
-};
-
-// Usage in component
-const UserProfile = ({ userId }: { userId: string }) => {
-  const { data: user, isLoading, isError, error } = useUser(userId);
-
-  if (isLoading) return <Skeleton />;
-  if (isError) return <ErrorMessage error={error} />;
-
-  return <div>{user.name}</div>;
+```ts
+// src/queries/user.ts
+export const userQueries = {
+  all: () => ['users'] as const,
+  detail: (id: string) =>
+    queryOptions({
+      queryKey: [...userQueries.all(), 'detail', id] as const,
+      queryFn: ({ signal }) => apiClient.get<User>(`/users/${id}`, { signal }),
+    }),
 };
 ```
 
-### Query with Parameters
+- `queryFn`은 실패하면 `Error`를 throw한다. 오류를 값으로 반환하지 않는다.
+- `signal`을 넘겨 화면을 떠나면 요청이 취소되게 한다. Suspense 훅에서는 취소되지 않는다.
+- 값이 있어야 실행되는 `useQuery`는 `enabled` 대신 `skipToken`을 쓰면 타입이 좁혀진다. Suspense 훅은 둘 다 지원하지 않으므로 컴포넌트를 나눈다.
+- 파생 값은 `select`로 만든다.
 
-```typescript
-// ✅ DO: Handle query parameters
-type UserFilters = {
-  role?: string;
-  status?: string;
-  page?: number;
-  limit?: number;
-};
+## 서버에서 미리 가져오기
 
-export const useUsers = (filters: UserFilters = {}) => {
-  return useQuery({
-    queryKey: userKeys.list(filters),
-    queryFn: async (): Promise<PaginatedResponse<User>> => {
-      const params = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined) {
-          params.set(key, String(value));
-        }
-      });
-
-      const response = await fetch(`/api/users?${params}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch users');
-      }
-      return response.json();
-    },
-    placeholderData: (previousData) => previousData, // Keep old data while fetching
-  });
-};
-```
-
-### Select for Data Transformation
-
-```typescript
-// ✅ DO: Use select for derived data
-export const useUserNames = () => {
-  return useQuery({
-    queryKey: userKeys.lists(),
-    queryFn: fetchUsers,
-    select: (data) => data.map((user) => user.name),
-  });
-};
-
-export const useActiveUsers = () => {
-  return useQuery({
-    queryKey: userKeys.lists(),
-    queryFn: fetchUsers,
-    select: (data) => data.filter((user) => user.isActive),
-  });
-};
-```
-
----
-
-## useMutation
-
-### Basic Mutation
-
-```typescript
-// ✅ DO: Use useMutation with callbacks
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-
-type CreateUserInput = {
-  name: string;
-  email: string;
-};
-
-export const useCreateUser = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (input: CreateUserInput): Promise<User> => {
-      const response = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(input),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to create user');
-      }
-      return response.json();
-    },
-    onSuccess: (newUser) => {
-      // Invalidate and refetch
-      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
-      // Or update cache directly
-      queryClient.setQueryData(userKeys.detail(newUser.id), newUser);
-    },
-    onError: (error) => {
-      console.error('Create user failed:', error);
-    },
-  });
-};
-
-// Usage
-const CreateUserForm = () => {
-  const { mutate, isPending, isError, error } = useCreateUser();
-
-  const handleSubmit = (data: CreateUserInput) => {
-    mutate(data, {
-      onSuccess: () => {
-        toast.success('User created!');
-      },
-    });
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      {/* form fields */}
-      <button type="submit" disabled={isPending}>
-        {isPending ? 'Creating...' : 'Create User'}
-      </button>
-    </form>
-  );
-};
-```
-
-### Optimistic Updates
-
-```typescript
-// ✅ DO: Optimistic updates with rollback
-export const useUpdateUser = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ id, ...data }: UpdateUserInput): Promise<User> => {
-      const response = await fetch(`/api/users/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to update user');
-      }
-      return response.json();
-    },
-    onMutate: async (newUser) => {
-      // Cancel outgoing refetches
-      await queryClient.cancelQueries({
-        queryKey: userKeys.detail(newUser.id),
-      });
-
-      // Snapshot previous value
-      const previousUser = queryClient.getQueryData<User>(
-        userKeys.detail(newUser.id)
-      );
-
-      // Optimistically update
-      queryClient.setQueryData(userKeys.detail(newUser.id), (old: User) => ({
-        ...old,
-        ...newUser,
-      }));
-
-      // Return context for rollback
-      return { previousUser };
-    },
-    onError: (error, newUser, context) => {
-      // Rollback on error
-      if (context?.previousUser) {
-        queryClient.setQueryData(
-          userKeys.detail(newUser.id),
-          context.previousUser
-        );
-      }
-    },
-    onSettled: (data, error, variables) => {
-      // Always refetch after error or success
-      queryClient.invalidateQueries({
-        queryKey: userKeys.detail(variables.id),
-      });
-    },
-  });
-};
-```
-
----
-
-## Prefetching
-
-### Route Prefetching
-
-```typescript
-// ✅ DO: Prefetch on hover/focus
-'use client';
-
-import { useQueryClient } from '@tanstack/react-query';
-import Link from 'next/link';
-
-export const UserLink = ({ userId, children }: UserLinkProps) => {
-  const queryClient = useQueryClient();
-
-  const prefetchUser = () => {
-    queryClient.prefetchQuery({
-      queryKey: userKeys.detail(userId),
-      queryFn: () => fetchUser(userId),
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    });
-  };
-
-  return (
-    <Link
-      href={`/users/${userId}`}
-      onMouseEnter={prefetchUser}
-      onFocus={prefetchUser}
-    >
-      {children}
-    </Link>
-  );
-};
-```
-
-### Server-Side Prefetching (Next.js)
-
-```typescript
-// ✅ DO: Prefetch in Server Components
-// app/users/[id]/page.tsx
-import {
-  dehydrate,
-  HydrationBoundary,
-  QueryClient,
-} from '@tanstack/react-query';
-import { UserProfile } from '@/components/UserProfile';
-
-export default async function UserPage({ params }: { params: { id: string } }) {
-  const queryClient = new QueryClient();
-
-  await queryClient.prefetchQuery({
-    queryKey: userKeys.detail(params.id),
-    queryFn: () => fetchUser(params.id),
-  });
+```tsx
+const UserSection = async ({ id }: UserSectionProps) => {
+  // TanStack Query는 현재 시각을 읽으므로 정적 셸에서 실행하면 빌드가 실패한다.
+  await io();
+  const queryClient = getQueryClient();
+  // 결과를 await하지 않으면 준비되는 대로 스트리밍된다.
+  void queryClient
+    .query({ ...userQueries.detail(id), queryFn: () => getUser(id) })
+    .catch(noop);
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <UserProfile userId={params.id} />
+      <UserProfile id={id} />
     </HydrationBoundary>
   );
-}
+};
+
+<Suspense fallback={<UserSkeleton />}>
+  <UserSection id={id} />
+</Suspense>;
 ```
 
----
+- 서버에서 `QueryClient`를 쓰는 컴포넌트는 `await io()`(`next/cache`)로 시작하고 `<Suspense>`로 감싼다.
+- 서버에서는 자기 라우트 핸들러를 호출하지 말고 `queryFn`을 데이터 함수로 바꾼다. 상대 주소는 서버에서 해석되지 않는다.
+- 클라이언트에서는 `useSuspenseQuery`로 읽는다. 첫 렌더에 필요한 쿼리(`useSuspenseQuery`, `initialData`가 있는 `useQuery`)는 `<Suspense>` 안에 둔다.
+- 오류 화면의 다시 시도는 `useQueryErrorResetBoundary().reset()`을 함께 부른다(`src/app/[locale]/error.tsx`). 부르지 않으면 실패한 Suspense 쿼리를 다시 요청하지 않는다.
+- `fetchQuery`, `prefetchQuery`, `ensureQueryData`는 폐기 예정이다. `queryClient.query()`를 쓴다.
+- 서버 컴포넌트에서만 쓰는 데이터는 TanStack Query 없이 직접 조회하고 `'use cache'`를 검토한다.
+- `queryFn`에서 Server Action을 부르지 않는다. 변경에만 쓴다.
 
-## Infinite Queries
+## 변경
 
-```typescript
-// ✅ DO: Use useInfiniteQuery for pagination
-import { useInfiniteQuery } from '@tanstack/react-query';
-
-type PostsResponse = {
-  posts: Post[];
-  nextCursor: string | null;
-};
-
-export const useInfinitePosts = () => {
-  return useInfiniteQuery({
-    queryKey: postKeys.lists(),
-    queryFn: async ({ pageParam }): Promise<PostsResponse> => {
-      const params = new URLSearchParams();
-      if (pageParam) {
-        params.set('cursor', pageParam);
-      }
-      const response = await fetch(`/api/posts?${params}`);
-      return response.json();
-    },
-    initialPageParam: null as string | null,
-    getNextPageParam: (lastPage) => lastPage.nextCursor,
-  });
-};
-
-// Usage
-const PostList = () => {
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfinitePosts();
-
-  const posts = data?.pages.flatMap((page) => page.posts) ?? [];
-
-  return (
-    <>
-      {posts.map((post) => (
-        <PostCard key={post.id} post={post} />
-      ))}
-      {hasNextPage && (
-        <button onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
-          {isFetchingNextPage ? 'Loading...' : 'Load More'}
-        </button>
-      )}
-    </>
-  );
-};
-```
-
----
-
-## Error and Loading States
-
-```typescript
-// ✅ DO: Handle all states properly
-const UserProfile = ({ userId }: { userId: string }) => {
-  const { data, isLoading, isError, error, refetch } = useUser(userId);
-
-  if (isLoading) {
-    return <UserProfileSkeleton />;
-  }
-
-  if (isError) {
-    return (
-      <ErrorState
-        message={error instanceof Error ? error.message : 'Unknown error'}
-        onRetry={refetch}
-      />
-    );
-  }
-
-  if (!data) {
-    return <EmptyState message="User not found" />;
-  }
-
-  return <UserCard user={data} />;
-};
-
-// ✅ DO: Use Suspense with useSuspenseQuery
-import { useSuspenseQuery } from '@tanstack/react-query';
-
-const UserProfile = ({ userId }: { userId: string }) => {
-  // Throws promise during loading (caught by Suspense)
-  // Throws error on failure (caught by ErrorBoundary)
-  const { data } = useSuspenseQuery({
-    queryKey: userKeys.detail(userId),
-    queryFn: () => fetchUser(userId),
-  });
-
-  return <UserCard user={data} />;
-};
-
-// Parent component
-const UserPage = ({ userId }: { userId: string }) => {
-  return (
-    <ErrorBoundary fallback={<ErrorState />}>
-      <Suspense fallback={<UserProfileSkeleton />}>
-        <UserProfile userId={userId} />
-      </Suspense>
-    </ErrorBoundary>
-  );
-};
-```
-
----
-
-## File Organization
-
-```
-src/
-├── queries/                   # or hooks/queries/
-│   ├── index.ts               # Re-export all queries
-│   ├── keys.ts                # All query key factories
-│   ├── users.ts               # User-related queries/mutations
-│   ├── posts.ts               # Post-related queries/mutations
-│   └── comments.ts            # Comment-related queries/mutations
-├── lib/
-│   └── api/
-│       ├── client.ts          # API client setup
-│       └── fetcher.ts         # Fetch utilities
-```
-
----
-
-## AI Agent Tasks for TanStack Query Development
-
-- Verify QueryClientProvider is set up in app/providers.tsx
-- Check query key factories are used (not inline string arrays)
-- Validate error handling in queryFn (throw errors, don't return them)
-- Ensure mutations invalidate related queries
-- Check optimistic updates have proper rollback
-- Verify enabled option is used for conditional queries
-- Validate Suspense queries use useSuspenseQuery
-- Check prefetching for improved UX
-- Ensure gcTime >= staleTime (formerly cacheTime)
-
-**References**:
-
-- [TanStack Query v5 Documentation](https://tanstack.com/query/latest)
-- [TanStack Query GitHub](https://github.com/TanStack/query)
+- 성공하면 관련 쿼리를 무효화하고, 무효화가 끝날 때까지 `pending`을 유지하려면 Promise를 반환한다.
+- 낙관적 갱신은 `onMutate`에서 진행 중인 요청을 취소하고 이전 값을 저장한 뒤, `onError`에서 되돌리고 `onSettled`에서 무효화한다.
+- 서버 캐시(`cacheTag`)도 바뀌면 액션 안에서 `updateTag`를 함께 호출한다.
