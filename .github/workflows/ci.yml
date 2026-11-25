@@ -3,33 +3,59 @@ name: CI
 on:
   workflow_dispatch:
 
+permissions: {}
+
+env:
+  # CI에서는 git 훅을 설치하지 않는다.
+  HUSKY: 0
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          version: 10
+          persist-credentials: false
+
+      # pnpm 버전은 package.json의 packageManager에서 읽는다.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
-          cache: 'pnpm'
+          node-version-file: .nvmrc
+          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run lint
-        run: pnpm lint
+      - name: Audit dependencies
+        run: pnpm audit
+
+      - name: Check peer dependencies
+        run: pnpm peers check
 
       - name: Check formatting
         run: pnpm format:check
+
+      - name: Run lint
+        run: pnpm lint
+
+      - name: Run stylelint
+        run: pnpm lint:css
+
+      - name: Check asset names
+        run: pnpm lint:assets
 
       - name: Type check
         run: pnpm type-check
