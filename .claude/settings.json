@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(pnpm check)",
+      "Bash(pnpm format:check)",
+      "Bash(pnpm lint)",
+      "Bash(pnpm lint:css)",
+      "Bash(pnpm lint:assets)",
+      "Bash(pnpm type-check)",
+      "Bash(pnpm test:run *)",
+      "Bash(pnpm build)",
+      "Bash(pnpm audit)",
+      "Bash(pnpm outdated)",
+      "Bash(pnpm peers check)",
+      "Bash(pnpm why *)"
+    ],
+    "deny": [
+      "Read(/**/.env)",
+      "Read(/**/.env.local)",
+      "Read(/**/.env.*.local)",
+      "Read(/**/.env.development)",
+      "Read(/**/.env.production)",
+      "Read(/**/.env.test)",
+      "Edit(/**/.env)",
+      "Edit(/**/.env.local)",
+      "Edit(/**/.env.*.local)",
+      "Edit(/**/.env.development)",
+      "Edit(/**/.env.production)",
+      "Edit(/**/.env.test)",
+      "Edit(/**/pnpm-lock.yaml)",
+      "Edit(/**/skills-lock.json)",
+      "Edit(/**/.agents/skills/**)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/use-node.sh\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/format.mjs\"",
+            "timeout": 30,
+            "statusMessage": "Prettier로 정리 중"
+          }
+        ]
+      }
+    ]
+  },
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true,
+    "frontend-design@claude-plugins-official": true,
+    "taste-skill@taste-skill": true,
+    "ui-ux-pro-max@ui-ux-pro-max-skill": true
+  },
+  "extraKnownMarketplaces": {
+    "taste-skill": {
+      "source": {
+        "source": "github",
+        "repo": "Leonxlnx/taste-skill",
+        "ref": "6c0b5c78f5d31776e2210305abaa210cdc0030bf"
+      }
+    },
+    "ui-ux-pro-max-skill": {
+      "source": {
+        "source": "github",
+        "repo": "nextlevelbuilder/ui-ux-pro-max-skill",
+        "ref": "f823ab5fb970de820e5a0626a0786aba9aee0543"
+      }
+    }
+  },
+  "language": "korean"
+}

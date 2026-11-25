@@ -1,7 +1,12 @@
+import { useTranslations } from 'next-intl';
+import { Spinner } from '@/components/ui/Spinner';
+
 export default function Loading() {
+  const t = useTranslations('common');
+
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
+      <Spinner label={t('loading')} />
     </div>
   );
 }

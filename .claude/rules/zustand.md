@@ -1,405 +1,61 @@
 ---
-paths: '**/stores/**/*.ts'
+paths:
+  - 'src/stores/**/*.ts'
+  - 'src/app/**/*.tsx'
+  - 'src/components/**/*.tsx'
+  - 'tests/unit/stores/**/*'
 ---
 
-# Zustand 5.0 Conventions
+# Zustand 컨벤션
 
-## Purpose
+## 무엇을 담는가
 
-Enforce consistent Zustand state management patterns with TypeScript strict mode. Based on Zustand v5.0.10 best practices with slices pattern for scalable architecture.
+- 클라이언트 UI 상태(사이드바, 테마, 다단계 폼)만 담는다.
+- 서버에서 온 데이터는 TanStack Query에 두고 복사하지 않는다. URL로 표현할 수 있는 상태(필터, 페이지)는 URL에 둔다.
 
----
+## 스토어 정의
 
-## Store Creation
+- 상태 타입과 액션 타입을 나눠 선언하고 `create<Store>()(...)`로 만든다. `src/stores/index.ts`에서 다시 내보낸다.
+- 미들웨어 순서는 `devtools(persist(...))`다. 중첩 객체를 갱신하면 가장 안쪽에 `immer`를 쓸 수 있다(`immer` 패키지 설치 필요).
+- `devtools`는 `enabled: process.env.NODE_ENV === 'development'`로 제한한다. 옵션 타입을 위해 `import type {} from '@redux-devtools/extension'`을 둔다.
+- `persist`는 `partialize`로 필요한 값만 저장한다. 저장 형태를 바꾸면 `version`과 `migrate`를 함께 올린다. 토큰이나 개인정보를 저장하지 않는다.
+- 상태 속성이 5개를 넘거나 영역이 갈리면 슬라이스(`StateCreator`)로 나눈다.
 
-### Basic Store with TypeScript
+## 사용
 
-```typescript
-// ✅ DO: Create store with strict typing
-import { create } from 'zustand';
+```ts
+// 필요한 값만 구독한다
+const theme = useUIStore((state) => state.theme);
 
-type CounterState = {
-  count: number;
-  increment: () => void;
-  decrement: () => void;
-  reset: () => void;
-};
+// 여러 값을 고를 때
+const { theme, setTheme } = useUIStore(
+  useShallow(({ theme, setTheme }) => ({ theme, setTheme }))
+);
 
-export const useCounterStore = create<CounterState>((set) => ({
-  count: 0,
-  increment: () => set((state) => ({ count: state.count + 1 })),
-  decrement: () => set((state) => ({ count: state.count - 1 })),
-  reset: () => set({ count: 0 }),
-}));
-
-// ❌ DON'T: Create store without type annotation
-export const useCounterStore = create((set) => ({
-  count: 0,
-  increment: () => set((state) => ({ count: state.count + 1 })),
-}));
+// ❌ 전체 구독: 어떤 값이 바뀌어도 다시 렌더링된다
+const { theme } = useUIStore();
 ```
 
-### Store with Async Actions
+## Next.js에서 주의할 점
 
-```typescript
-// ✅ DO: Async actions with proper error handling
-type UserState = {
-  user: User | null;
-  isLoading: boolean;
-  error: string | null;
-  fetchUser: (id: string) => Promise<void>;
-  clearError: () => void;
-};
+- 서버 컴포넌트에서 스토어를 읽거나 쓰지 않는다.
+- 모듈 스토어는 서버에서 모든 요청이 공유한다. 사용자별 초기값이 필요하면 `createStore`와 Context로 요청마다 만든다.
+- `persist` 값은 hydration 이후에 적용된다. 첫 렌더 결과가 달라지는 UI는 hydration 완료를 확인한 뒤 표시한다. 서버에는 `persist` API가 없어 렌더링 중에 직접 부르면 빌드가 실패한다.
 
-export const useUserStore = create<UserState>((set) => ({
-  user: null,
-  isLoading: false,
-  error: null,
-  fetchUser: async (id) => {
-    set({ isLoading: true, error: null });
-    try {
-      const user = await api.getUser(id);
-      set({ user, isLoading: false });
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : 'Failed to fetch user',
-        isLoading: false,
-      });
-    }
-  },
-  clearError: () => set({ error: null }),
-}));
-```
-
----
-
-## Slices Pattern
-
-### Creating Slices for Large Stores
-
-```typescript
-// ✅ DO: Split store into slices
-// stores/slices/authSlice.ts
-import type { StateCreator } from 'zustand';
-
-export type AuthSlice = {
-  user: User | null;
-  isAuthenticated: boolean;
-  login: (credentials: Credentials) => Promise<void>;
-  logout: () => void;
-};
-
-export const createAuthSlice: StateCreator<
-  AuthSlice & CartSlice, // Combined state type
-  [],
-  [],
-  AuthSlice
-> = (set) => ({
-  user: null,
-  isAuthenticated: false,
-  login: async (credentials) => {
-    const user = await api.login(credentials);
-    set({ user, isAuthenticated: true });
-  },
-  logout: () => set({ user: null, isAuthenticated: false }),
-});
-
-// stores/slices/cartSlice.ts
-export type CartSlice = {
-  items: CartItem[];
-  addItem: (item: CartItem) => void;
-  removeItem: (id: string) => void;
-  clearCart: () => void;
-};
-
-export const createCartSlice: StateCreator<
-  AuthSlice & CartSlice,
-  [],
-  [],
-  CartSlice
-> = (set) => ({
-  items: [],
-  addItem: (item) =>
-    set((state) => ({
-      items: [...state.items, item],
-    })),
-  removeItem: (id) =>
-    set((state) => ({
-      items: state.items.filter((item) => item.id !== id),
-    })),
-  clearCart: () => set({ items: [] }),
-});
-
-// stores/useAppStore.ts
-import { create } from 'zustand';
-import { createAuthSlice, type AuthSlice } from './slices/authSlice';
-import { createCartSlice, type CartSlice } from './slices/cartSlice';
-
-type AppStore = AuthSlice & CartSlice;
-
-export const useAppStore = create<AppStore>()((...args) => ({
-  ...createAuthSlice(...args),
-  ...createCartSlice(...args),
-}));
-```
-
----
-
-## Middleware
-
-### DevTools (Development Only)
-
-```typescript
-// ✅ DO: Enable devtools in development
-import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
-
-export const useCounterStore = create<CounterState>()(
-  devtools(
-    (set) => ({
-      count: 0,
-      increment: () =>
-        set(
-          (state) => ({ count: state.count + 1 }),
-          undefined,
-          'counter/increment' // Action name for devtools
-        ),
-    }),
-    { name: 'CounterStore', enabled: process.env.NODE_ENV === 'development' }
-  )
+```ts
+const hydrated = useSyncExternalStore(
+  (onChange) => useUIStore.persist.onFinishHydration(onChange),
+  () => useUIStore.persist.hasHydrated(),
+  () => false
 );
 ```
 
-### Persist (LocalStorage/SessionStorage)
+## 테스트
 
-```typescript
-// ✅ DO: Persist state with proper typing
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
-
-type ThemeState = {
-  theme: 'light' | 'dark';
-  setTheme: (theme: 'light' | 'dark') => void;
-};
-
-export const useThemeStore = create<ThemeState>()(
-  persist(
-    (set) => ({
-      theme: 'light',
-      setTheme: (theme) => set({ theme }),
-    }),
-    {
-      name: 'theme-storage',
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ theme: state.theme }), // Only persist theme
-    }
-  )
-);
-
-// ✅ DO: Combine middleware
-export const useAppStore = create<AppState>()(
-  devtools(
-    persist(
-      (set) => ({
-        // state and actions
-      }),
-      { name: 'app-storage' }
-    ),
-    { name: 'AppStore' }
-  )
-);
-```
-
-### Immer for Complex Updates
-
-```typescript
-// ✅ DO: Use immer for nested state updates
-import { create } from 'zustand';
-import { immer } from 'zustand/middleware/immer';
-
-type TodoState = {
-  todos: {
-    id: string;
-    text: string;
-    completed: boolean;
-    subtasks: { id: string; text: string; done: boolean }[];
-  }[];
-  toggleSubtask: (todoId: string, subtaskId: string) => void;
-};
-
-export const useTodoStore = create<TodoState>()(
-  immer((set) => ({
-    todos: [],
-    toggleSubtask: (todoId, subtaskId) =>
-      set((state) => {
-        const todo = state.todos.find((t) => t.id === todoId);
-        if (todo) {
-          const subtask = todo.subtasks.find((s) => s.id === subtaskId);
-          if (subtask) {
-            subtask.done = !subtask.done; // Direct mutation with immer
-          }
-        }
-      }),
-  }))
-);
-
-// ❌ DON'T: Complex nested updates without immer
-set((state) => ({
-  todos: state.todos.map((todo) =>
-    todo.id === todoId
-      ? {
-          ...todo,
-          subtasks: todo.subtasks.map((subtask) =>
-            subtask.id === subtaskId
-              ? { ...subtask, done: !subtask.done }
-              : subtask
-          ),
-        }
-      : todo
-  ),
-}));
-```
-
----
-
-## React Integration
-
-### Selectors for Performance
-
-```typescript
-// ✅ DO: Use selectors to prevent unnecessary re-renders
-const count = useCounterStore((state) => state.count);
-const increment = useCounterStore((state) => state.increment);
-
-// ✅ DO: Multiple selectors for fine-grained subscriptions
-const user = useAppStore((state) => state.user);
-const isAuthenticated = useAppStore((state) => state.isAuthenticated);
-
-// ✅ DO: Memoized computed selectors
-import { useShallow } from 'zustand/react/shallow';
-
-const { user, isAuthenticated } = useAppStore(
-  useShallow((state) => ({
-    user: state.user,
-    isAuthenticated: state.isAuthenticated,
-  }))
-);
-
-// ❌ DON'T: Select entire store (causes re-render on any change)
-const store = useCounterStore(); // Bad - subscribes to everything
-const { count, increment } = useCounterStore(); // Still bad
-```
-
-### Custom Hooks for Complex Logic
-
-```typescript
-// ✅ DO: Create custom hooks for derived state
-export const useCartTotal = () => {
-  return useAppStore((state) =>
-    state.items.reduce((total, item) => total + item.price * item.quantity, 0)
-  );
-};
-
-export const useIsCartEmpty = () => {
-  return useAppStore((state) => state.items.length === 0);
-};
-
-// ✅ DO: Combine with other hooks
-export const useAuthenticatedUser = () => {
-  const user = useAppStore((state) => state.user);
-  const isAuthenticated = useAppStore((state) => state.isAuthenticated);
-
-  if (!isAuthenticated || !user) {
-    return null;
-  }
-
-  return user;
-};
-```
-
----
-
-## Store Outside React
-
-```typescript
-// ✅ DO: Access store outside React components
-// Useful for utilities, server actions, etc.
-const currentCount = useCounterStore.getState().count;
-useCounterStore.getState().increment();
-
-// ✅ DO: Subscribe to changes outside React
-const unsubscribe = useCounterStore.subscribe((state) =>
-  console.log('Count changed:', state.count)
-);
-
-// ✅ DO: Subscribe to specific slice
-const unsubscribe = useCounterStore.subscribe(
-  (state) => state.count,
-  (count, prevCount) => console.log('Count:', prevCount, '->', count)
-);
-```
-
----
-
-## Testing
-
-```typescript
-// ✅ DO: Reset store between tests
-import { useCounterStore } from './counterStore';
-
-const initialState = useCounterStore.getState();
+```ts
+const initialState = useUIStore.getInitialState();
 
 beforeEach(() => {
-  useCounterStore.setState(initialState, true);
-});
-
-// ✅ DO: Test store actions
-describe('useCounterStore', () => {
-  it('increments count', () => {
-    const { increment } = useCounterStore.getState();
-    increment();
-    expect(useCounterStore.getState().count).toBe(1);
-  });
-
-  it('resets count', () => {
-    useCounterStore.setState({ count: 10 });
-    useCounterStore.getState().reset();
-    expect(useCounterStore.getState().count).toBe(0);
-  });
+  useUIStore.setState(initialState, true);
 });
 ```
-
----
-
-## File Organization
-
-```
-src/
-├── stores/
-│   ├── index.ts              # Re-export all stores
-│   ├── useAuthStore.ts       # Single-purpose store
-│   ├── useCartStore.ts       # Single-purpose store
-│   ├── useAppStore.ts        # Combined store with slices
-│   └── slices/
-│       ├── authSlice.ts
-│       ├── cartSlice.ts
-│       └── index.ts
-```
-
----
-
-## AI Agent Tasks for Zustand Development
-
-- Verify stores use TypeScript strict typing
-- Check selector usage (avoid subscribing to entire store)
-- Validate middleware configuration (devtools, persist, immer)
-- Ensure slices pattern for stores with 5+ state properties
-- Check async actions have proper error handling
-- Verify `useShallow` for multiple property selections
-- Validate persist storage configuration
-- Ensure stores are testable (getState, setState access)
-
-**References**:
-
-- [Zustand v5 Documentation](https://zustand.docs.pmnd.rs/)
-- [Zustand GitHub](https://github.com/pmndrs/zustand)

@@ -1,1 +1,15 @@
+# 터미널이나 GUI의 Node 버전과 관계없이 .nvmrc 버전으로 검사한다.
+NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+required="v$(tr -d '[:space:]v' < .nvmrc)"
+
+if [ "$(node -v 2> /dev/null)" != "$required" ] && [ -s "$NVM_DIR/nvm.sh" ]; then
+  # dash는 '. 파일 인자' 형식의 인자를 전달하지 않으므로 set으로 넘긴다.
+  set -- --no-use
+  . "$NVM_DIR/nvm.sh"
+  nvm use --silent || {
+    echo "Node 버전을 전환하지 못했습니다. 'nvm install'을 먼저 실행하세요." >&2
+    exit 1
+  }
+fi
+
 pnpm exec lint-staged

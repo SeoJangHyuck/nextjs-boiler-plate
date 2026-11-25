@@ -1,1 +1,34 @@
-@import 'tailwindcss';
+/*
+ * Tailwind CSS v4 진입점 (CSS-first 설정)
+ * src만 검사해 문서의 예시 클래스가 배포 CSS에 들어가지 않게 한다.
+ */
+@import 'tailwindcss' source('../');
+
+/*
+ * SCSS 토큰(_tokens.scss)을 Tailwind 유틸리티로 연결한다.
+ * - reference: CSS 변수를 다시 출력하지 않는다. 값의 출처는 _tokens.scss 하나다.
+ * - inline: 유틸리티가 토큰 변수를 직접 참조한다.
+ * --spacing-* 토큰은 연결하지 않는다. max-w-md 같은 크기 유틸리티를 덮어쓰기 때문이다.
+ * --shadow-* 토큰도 연결하지 않는다. shadow-red-500 같은 색 유틸리티가 동작하지 않게 된다.
+ */
+@theme inline reference {
+  --color-background: var(--color-background);
+  --color-foreground: var(--color-foreground);
+  --color-surface: var(--color-surface);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-primary: var(--color-primary);
+  --color-primary-light: var(--color-primary-light);
+  --color-secondary: var(--color-text-secondary);
+  --color-muted: var(--color-text-muted);
+  --color-disabled: var(--color-text-disabled);
+  --color-border: var(--stroke-default);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+}
+
+/* next/font가 <html>에 주입하는 변수를 기본 글꼴로 사용한다. */
+@theme inline {
+  --font-sans: var(--font-pretendard), sans-serif;
+}

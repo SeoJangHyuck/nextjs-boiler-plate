@@ -11,37 +11,69 @@ on:
           - dev
           - live
 
+permissions: {}
+
+env:
+  # CI에서는 git 훅을 설치하지 않는다.
+  HUSKY: 0
+
+# 같은 환경의 배포를 동시에 실행하지 않는다.
+concurrency:
+  group: deploy-${{ inputs.environment }}
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}
+    permissions:
+      contents: read
 
     steps:
+      - name: Require main branch for live
+        if: inputs.environment == 'live' && github.ref != 'refs/heads/main'
+        run: |
+          echo "live 배포는 main 브랜치에서만 실행합니다." >&2
+          exit 1
+
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
+      # pnpm 버전은 package.json의 packageManager에서 읽는다.
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
 
+      # 배포 산출물에는 공유 캐시를 쓰지 않는다. (캐시 오염 방지)
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 22
-          cache: 'pnpm'
+          node-version-file: .nvmrc
+          package-manager-cache: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # 잠금 파일이 없는 도구이므로 게시 기간과 설치 스크립트를 제한한다.
       - name: Install Vercel CLI
-        run: pnpm add -g vercel@latest
-
-      - name: Pull Vercel Environment Information
-        run: vercel pull --yes --environment=${{ github.event.inputs.environment == 'live' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build Project
-        run: vercel build ${{ github.event.inputs.environment == 'live' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+        run: npm install --global --min-release-age=3 --ignore-scripts vercel@66.6.0
 
       - name: Deploy to Vercel
-        run: vercel deploy --prebuilt ${{ github.event.inputs.environment == 'live' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          # Vercel 프로젝트에 같은 변수가 있어도 이 값이 우선한다.
+          NEXT_PUBLIC_ENV: ${{ inputs.environment }}
+        run: |
+          if [ "$NEXT_PUBLIC_ENV" = "live" ]; then
+            vercel pull --yes --environment=production
+            vercel build --prod
+            vercel deploy --prebuilt --prod
+          else
+            vercel pull --yes --environment=preview
+            vercel build
+            vercel deploy --prebuilt
+          fi

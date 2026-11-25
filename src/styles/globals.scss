@@ -3,52 +3,50 @@
 // 전역 스타일 엔트리 파일
 // ==========================================================================
 
-// CSS Reset
-@use 'reset';
+// 레이어 순서 선언 (가장 먼저 로드)
+@use 'layers';
 
 // CSS Custom Properties (색상, 변수)
-@use 'colors';
-@use 'variables';
+@use 'tokens';
+
+// CSS Reset
+@use 'reset';
 @use 'breakpoints' as bp;
 
-// -----------------------------------------------------------------------------
-// Body
-// -----------------------------------------------------------------------------
+@layer base {
+  // ---------------------------------------------------------------------------
+  // Body
+  // ---------------------------------------------------------------------------
 
-body {
-  background-color: var(--color-background);
-  color: var(--color-text-primary);
-  direction: ltr;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  line-height: 1.5;
-  min-width: bp.$breakpoint-mobile-min;
-  overflow-wrap: break-word;
-  overflow-x: hidden;
-  text-size-adjust: none;
-  word-break: keep-all;
-}
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.5;
+    min-width: bp.$breakpoint-mobile-min;
+    overflow-wrap: break-word;
+    overflow-x: hidden;
+    text-size-adjust: none;
+    word-break: keep-all;
+  }
 
-// -----------------------------------------------------------------------------
-// Language-specific Settings
-// -----------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  // Language-specific Settings
+  // ---------------------------------------------------------------------------
 
-// 한국어, 영어 - 단어 단위 줄바꿈
-:lang(ko),
-:lang(en) {
-  word-break: keep-all;
-}
+  // 한국어, 영어 - 단어 단위 줄바꿈
+  :lang(ko),
+  :lang(en) {
+    word-break: keep-all;
+  }
 
-// 일본어, 중국어, 태국어 - 문자 단위 줄바꿈
-:lang(ja),
-:lang(th),
-:lang(zh-tw),
-:lang(zh-cn) {
-  overflow-wrap: anywhere;
-  word-break: normal;
-}
-
-// 아랍어 - RTL
-:lang(ar) {
-  direction: rtl;
+  // 일본어, 중국어, 태국어 - 문자 단위 줄바꿈
+  :lang(ja),
+  :lang(th),
+  :lang(zh-tw),
+  :lang(zh-cn) {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
 }
