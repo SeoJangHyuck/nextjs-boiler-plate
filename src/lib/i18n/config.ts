@@ -15,8 +15,10 @@ export type LocaleObject = {
 /**
  * 서비스에서 노출될 locale 리스트
  * 지역 + 언어의 조합으로 개별 언어가 달라도 동일 컨텐츠를 제공할 언어셋 묶음
+ *
+ * locale을 추가하면 messages/<code>.json도 함께 추가한다.
  */
-export const serviceLocales: LocaleObject[] = [
+export const serviceLocales = [
   // default & fallback
   {
     code: 'en',
@@ -37,46 +39,39 @@ export const serviceLocales: LocaleObject[] = [
   // { code: 'zh-tw', iso: 'zh-TW', dir: 'ltr', name: '繁體中文' },
   // { code: 'zh-cn', iso: 'zh-CN', dir: 'ltr', name: '简体中文' },
   // { code: 'id', iso: 'id-ID', dir: 'ltr', name: 'Bahasa Indonesia' },
-];
+] as const satisfies readonly LocaleObject[];
+
+/** Locale 타입 (serviceLocales의 code 유니온) */
+export type Locale = (typeof serviceLocales)[number]['code'];
 
 /**
  * 실제 i18n에 설정될 locale 리스트
  * 확장이 필요한 경우 serviceLocales에 추가
  */
-export const localeObjects: LocaleObject[] = [...serviceLocales];
+export const localeObjects: readonly LocaleObject[] = serviceLocales;
 
 /** next-intl에서 사용할 locale 코드 배열 */
-export const locales = localeObjects.map((l) => l.code) as [
-  string,
-  ...string[],
-];
+export const locales: Locale[] = serviceLocales.map(({ code }) => code);
 
 /** 기본 locale */
-export const defaultLocale = 'en';
+export const defaultLocale = 'en' satisfies Locale;
 
-/** Locale 타입 */
-export type Locale = (typeof locales)[number];
-
-/** locale 코드 유효성 검사 */
-export function isValidLocale(locale: string): locale is Locale {
-  return locales.includes(locale);
-}
+/** 날짜·시간 표시에 쓰는 서비스 기준 시간대. 실행 환경에 따라 달라지지 않게 고정한다. */
+export const defaultTimeZone = 'Asia/Seoul';
 
 /** locale 코드로 LocaleObject 조회 */
-export function getLocaleObject(locale: string): LocaleObject | undefined {
-  return localeObjects.find((l) => l.code === locale);
-}
+export const getLocaleObject = (locale: string): LocaleObject | undefined =>
+  localeObjects.find(({ code }) => code === locale);
 
 /** locale의 방향(dir) 조회 */
-export function getLocaleDir(locale: string): 'ltr' | 'rtl' {
-  return getLocaleObject(locale)?.dir ?? 'ltr';
-}
+export const getLocaleDir = (locale: string): LocaleObject['dir'] =>
+  getLocaleObject(locale)?.dir ?? 'ltr';
 
 /**
  * 개별 locale을 입력받아 서비스에 노출될 locale 정보값을 리턴
  * 지역별 그룹화가 필요한 경우 이 함수에서 매핑
  */
-export function getServiceLocale(locale: string): string {
+export const getServiceLocale = (locale: string): string => {
   // 현재는 1:1 매핑, 필요시 확장
   // 예시:
   // switch (locale) {
@@ -87,4 +82,4 @@ export function getServiceLocale(locale: string): string {
   //     return locale;
   // }
   return locale;
-}
+};

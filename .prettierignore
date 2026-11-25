@@ -3,4 +3,11 @@ node_modules/
 out/
 dist/
 coverage/
+playwright-report/
+test-results/
 pnpm-lock.yaml
+next-env.d.ts
+
+# 외부에서 가져온 스킬은 업스트림 원문을 유지한다
+.agents/
+skills-lock.json

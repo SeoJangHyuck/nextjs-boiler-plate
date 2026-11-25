@@ -1,0 +1,2 @@
+# 운영체제와 관계없이 LF로 저장하고 체크아웃한다. (Prettier endOfLine, 셸 훅)
+* text=auto eol=lf

@@ -1,15 +1,22 @@
 import { z } from 'zod';
+import { validationKey } from './errors';
 
 /** 비밀번호 정책 상수 */
 const PASSWORD_RULES = {
   MIN_LENGTH: 8,
+  MAX_LENGTH: 128,
   MIN_CRITERIA: 3,
 } as const;
+
+/** 이메일 주소의 최대 길이 (RFC 5321) */
+const EMAIL_MAX_LENGTH = 254;
+
+const URL_MAX_LENGTH = 2048;
 
 const hasLowercase = (str: string) => /[a-z]/.test(str);
 const hasUppercase = (str: string) => /[A-Z]/.test(str);
 const hasNumber = (str: string) => /[0-9]/.test(str);
-const hasSpecialChar = (str: string) => /[!@#$%^&*(),.?":{}|<>]/.test(str);
+const hasSpecialChar = (str: string) => /[\p{P}\p{S}]/u.test(str);
 
 const countPasswordCriteria = (password: string) => {
   return [
@@ -20,42 +27,56 @@ const countPasswordCriteria = (password: string) => {
   ].filter(Boolean).length;
 };
 
-/** 비밀번호 스키마: 8자 이상 + 4가지 중 3가지 조합 */
+/** 비밀번호 스키마: 8~128자 + 4가지 중 3가지 조합 */
 export const passwordSchema = z
   .string()
-  .min(PASSWORD_RULES.MIN_LENGTH, '비밀번호는 8자 이상이어야 합니다')
+  .min(PASSWORD_RULES.MIN_LENGTH, validationKey('passwordTooShort'))
+  .max(PASSWORD_RULES.MAX_LENGTH, validationKey('passwordTooLong'))
   .refine(
     (val) => countPasswordCriteria(val) >= PASSWORD_RULES.MIN_CRITERIA,
-    '영문 소문자, 대문자, 숫자, 특수문자 중 3가지 이상 포함해야 합니다'
+    validationKey('passwordCriteria')
   );
+
+/** 비밀번호 확인 스키마: 일치 여부는 폼 스키마의 refine에서 검사 */
+const passwordConfirmSchema = z
+  .string()
+  .max(PASSWORD_RULES.MAX_LENGTH, validationKey('passwordTooLong'));
 
 /** 닉네임 스키마: 2~20자, 한글/영문/숫자만 */
 export const nicknameSchema = z
   .string()
-  .min(2, '닉네임은 2자 이상이어야 합니다')
-  .max(20, '닉네임은 20자 이하여야 합니다')
-  .regex(/^[가-힣a-zA-Z0-9]+$/, '한글, 영문, 숫자만 사용 가능합니다');
+  .min(2, validationKey('nicknameTooShort'))
+  .max(20, validationKey('nicknameTooLong'))
+  .regex(/^[가-힣a-zA-Z0-9]+$/, validationKey('nicknameCharacters'));
 
 /** 성별 스키마 */
 export const genderSchema = z.enum(['male', 'female', 'other']);
 
-/** 생년월일 스키마 */
-export const birthDateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, '올바른 날짜 형식이 아닙니다 (YYYY-MM-DD)');
+/** 생년월일 스키마: 달력에 존재하는 YYYY-MM-DD */
+export const birthDateSchema = z.iso.date(validationKey('birthDateInvalid'));
+
+/** 이메일 스키마 */
+export const emailSchema = z
+  .email(validationKey('emailInvalid'))
+  .max(EMAIL_MAX_LENGTH, validationKey('emailInvalid'));
+
+/** 외부 이미지 URL 스키마: javascript: 같은 위험한 프로토콜은 거부 */
+export const imageUrlSchema = z
+  .url({ protocol: /^https?$/, error: validationKey('urlInvalid') })
+  .max(URL_MAX_LENGTH, validationKey('urlInvalid'));
 
 /** 이메일 회원가입 폼 스키마 */
 export const emailSignUpSchema = z
   .object({
-    email: z.string().email('올바른 이메일 형식이 아닙니다'),
+    email: emailSchema,
     password: passwordSchema,
-    passwordConfirm: z.string(),
+    passwordConfirm: passwordConfirmSchema,
     nickname: nicknameSchema,
     birthDate: birthDateSchema,
     gender: genderSchema,
   })
   .refine((data) => data.password === data.passwordConfirm, {
-    message: '비밀번호가 일치하지 않습니다',
+    error: validationKey('passwordMismatch'),
     path: ['passwordConfirm'],
   });
 
@@ -68,23 +89,26 @@ export const socialSignUpSchema = z.object({
 
 /** 로그인 폼 스키마 */
 export const loginSchema = z.object({
-  email: z.string().email('올바른 이메일 형식이 아닙니다'),
-  password: z.string().min(1, '비밀번호를 입력해주세요'),
+  email: emailSchema,
+  password: z
+    .string()
+    .min(1, validationKey('passwordRequired'))
+    .max(PASSWORD_RULES.MAX_LENGTH, validationKey('passwordTooLong')),
 });
 
 /** 비밀번호 재설정 요청 스키마 */
 export const passwordResetRequestSchema = z.object({
-  email: z.string().email('올바른 이메일 형식이 아닙니다'),
+  email: emailSchema,
 });
 
 /** 비밀번호 재설정 스키마 */
 export const passwordResetSchema = z
   .object({
     password: passwordSchema,
-    passwordConfirm: z.string(),
+    passwordConfirm: passwordConfirmSchema,
   })
   .refine((data) => data.password === data.passwordConfirm, {
-    message: '비밀번호가 일치하지 않습니다',
+    error: validationKey('passwordMismatch'),
     path: ['passwordConfirm'],
   });
 
@@ -93,5 +117,5 @@ export const profileUpdateSchema = z.object({
   nickname: nicknameSchema.optional(),
   birthDate: birthDateSchema.optional(),
   gender: genderSchema.optional(),
-  avatarUrl: z.string().url().nullable().optional(),
+  avatarUrl: imageUrlSchema.nullable().optional(),
 });

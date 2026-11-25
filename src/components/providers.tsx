@@ -1,15 +1,16 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { getQueryClient } from '@/lib/api/query-client';
 
 type ProvidersProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 // TODO: OIDC 연동 시 AuthProvider 추가 예정
-export function Providers({ children }: ProvidersProps) {
+export const Providers = ({ children }: ProvidersProps) => {
   const queryClient = getQueryClient();
 
   return (
@@ -18,4 +19,4 @@ export function Providers({ children }: ProvidersProps) {
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
-}
+};

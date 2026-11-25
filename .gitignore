@@ -7,22 +7,22 @@ node_modules/
 .next/
 out/
 build/
+# next dev, next build, next typegen이 생성
+next-env.d.ts
 
 # Testing
 coverage/
 playwright-report/
 test-results/
+.vitest/
 
 # Production
 dist/
 
-# Environment (실제 시크릿 포함 파일)
-.env
-.env.local
-.env.*.local
-
-# 환경별 설정 파일은 예시만 커밋 (.env.dev, .env.qa 등은 템플릿)
-# 실제 시크릿이 포함된 경우 .env.*.local로 생성
+# Environment (예시 파일만 커밋한다)
+.env*
+!.env.example
+!.env.*.example
 
 # Debug
 npm-debug.log*
@@ -45,3 +45,8 @@ Thumbs.db
 
 # Vercel
 .vercel
+
+# Claude Code (개인 설정)
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md

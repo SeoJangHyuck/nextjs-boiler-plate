@@ -1,0 +1,121 @@
+// ==========================================================================
+// Tokens
+// SCSS 변수를 CSS Custom Properties(런타임 토큰)로 노출한다.
+// globals.scss에서만 로드한다. 여기서 :root를 출력하므로 _utils.scss에 포함하지 않는다.
+// (_utils.scss에 포함하면 CSS 모듈마다 :root 블록이 중복 출력된다)
+// ==========================================================================
+
+@use 'colors' as *;
+@use 'variables' as *;
+
+:root {
+  // Primary
+  --green-light: #{$green-light};
+  --green: #{$green};
+  --blue-light: #{$blue-light};
+  --blue: #{$blue};
+  --red-light: #{$red-light};
+  --red: #{$red};
+  --white: #{$white};
+  --black: #{$black};
+
+  // Accent
+  --orange: #{$orange};
+  --yellow: #{$yellow};
+  --aqua: #{$aqua};
+  --pink: #{$pink};
+  --lime: #{$lime};
+  --teal: #{$teal};
+  --purple: #{$purple};
+
+  // Navy Scale
+  --navy-20: #{$navy-20};
+  --navy-40: #{$navy-40};
+  --navy-50: #{$navy-50};
+  --navy-60: #{$navy-60};
+  --navy-65: #{$navy-65};
+  --navy-70: #{$navy-70};
+  --navy-80: #{$navy-80};
+
+  // Opacity - White
+  --white-op-70: #{$white-op-70};
+  --white-op-50: #{$white-op-50};
+  --white-op-30: #{$white-op-30};
+  --white-op-10: #{$white-op-10};
+
+  // Opacity - Black
+  --black-op-70: #{$black-op-70};
+
+  // Opacity - Navy
+  --navy-op-95: #{$navy-op-95};
+  --navy-op-70: #{$navy-op-70};
+  --navy-op-50: #{$navy-op-50};
+
+  // Opacity - Green
+  --green-op-70: #{$green-op-70};
+  --green-op-50: #{$green-op-50};
+
+  // Opacity - Blue
+  --blue-op-70: #{$blue-op-70};
+  --blue-op-50: #{$blue-op-50};
+
+  // Opacity - Red
+  --red-op-70: #{$red-op-70};
+  --red-op-50: #{$red-op-50};
+
+  // Gray
+  --gray-60: #{$gray-60};
+  --gray-70: #{$gray-70};
+
+  // Semantic - Stroke
+  --stroke-default: #{$stroke-default};
+  --stroke-green: #{$stroke-green};
+  --stroke-blue: #{$stroke-blue};
+  --stroke-red: #{$stroke-red};
+  --stroke-orange: #{$stroke-orange};
+  --stroke-yellow: #{$stroke-yellow};
+  --stroke-aqua: #{$stroke-aqua};
+  --stroke-pink: #{$stroke-pink};
+
+  // Background & Foreground (Dark Theme)
+  --color-background: #{$navy-70};
+  --color-foreground: #{$white};
+  --color-surface: #{$navy-60};
+  --color-surface-hover: #{$navy-50};
+
+  // Text
+  --color-text-primary: #{$white};
+  --color-text-secondary: #{$white-op-70};
+  --color-text-muted: #{$white-op-50};
+  --color-text-disabled: #{$white-op-30};
+
+  // Primary Action
+  --color-primary: #{$green};
+  --color-primary-light: #{$green-light};
+
+  // Spacing
+  --spacing-xs: #{$spacing-xs};
+  --spacing-sm: #{$spacing-sm};
+  --spacing-md: #{$spacing-md};
+  --spacing-lg: #{$spacing-lg};
+  --spacing-xl: #{$spacing-xl};
+  --spacing-2xl: #{$spacing-2xl};
+
+  // Border Radius
+  --radius-sm: #{$radius-sm};
+  --radius-md: #{$radius-md};
+  --radius-lg: #{$radius-lg};
+  --radius-xl: #{$radius-xl};
+  --radius-full: #{$radius-full};
+
+  // Shadows
+  --shadow-sm: #{$shadow-sm};
+  --shadow-md: #{$shadow-md};
+  --shadow-lg: #{$shadow-lg};
+  --shadow-xl: #{$shadow-xl};
+
+  // Transitions
+  --transition-fast: #{$transition-fast};
+  --transition-normal: #{$transition-normal};
+  --transition-slow: #{$transition-slow};
+}

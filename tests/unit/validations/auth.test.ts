@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   passwordSchema,
   nicknameSchema,
+  birthDateSchema,
   emailSignUpSchema,
   loginSchema,
+  passwordResetSchema,
+  profileUpdateSchema,
 } from '@/lib/validations/auth';
 
 describe('passwordSchema', () => {
@@ -12,15 +15,38 @@ describe('passwordSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('3가지 조합 미만이면 실패', () => {
-    const result = passwordSchema.safeParse('abcdefgh');
-    expect(result.success).toBe(false);
+  it('128자를 넘으면 실패', () => {
+    expect(passwordSchema.safeParse(`Aa1${'a'.repeat(125)}`).success).toBe(
+      true
+    );
+    expect(passwordSchema.safeParse(`Aa1${'a'.repeat(126)}`).success).toBe(
+      false
+    );
   });
 
-  it('8자 이상 + 3가지 조합이면 성공', () => {
-    expect(passwordSchema.safeParse('Abcdefg1').success).toBe(true);
-    expect(passwordSchema.safeParse('abcdefg1!').success).toBe(true);
-    expect(passwordSchema.safeParse('ABCDEFG1!').success).toBe(true);
+  it.each([
+    'abcdefgh',
+    'abcdefg1',
+    'ABCDEFG1',
+    'Abcdefgh',
+    'abcdefg!',
+    'ABCDEFG!',
+    '1234567!',
+  ])('3가지 조합 미만이면 실패: %s', (password) => {
+    expect(passwordSchema.safeParse(password).success).toBe(false);
+  });
+
+  it.each([
+    'Abcdefg1',
+    'Abcdefg!',
+    'abcdefg1!',
+    'ABCDEFG1!',
+    'abcdefg1-',
+    'abcdefg1_',
+    'abcdefg1+',
+    'abcdefg1₩',
+  ])('8자 이상 + 3가지 조합이면 성공: %s', (password) => {
+    expect(passwordSchema.safeParse(password).success).toBe(true);
   });
 });
 
@@ -56,6 +82,27 @@ describe('loginSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('지나치게 긴 값이면 실패', () => {
+    const email = `${'a'.repeat(250)}@example.com`;
+    expect(loginSchema.safeParse({ email, password: 'password' }).success).toBe(
+      false
+    );
+    expect(
+      loginSchema.safeParse({
+        email: 'test@example.com',
+        password: 'a'.repeat(129),
+      }).success
+    ).toBe(false);
+  });
+
+  it('비밀번호가 비어 있으면 실패', () => {
+    const result = loginSchema.safeParse({
+      email: 'test@example.com',
+      password: '',
+    });
+    expect(result.error?.issues[0]?.message).toBe('passwordRequired');
+  });
+
   it('잘못된 이메일이면 실패', () => {
     const result = loginSchema.safeParse({
       email: 'invalid-email',
@@ -88,5 +135,64 @@ describe('emailSignUpSchema', () => {
       gender: 'male',
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe('passwordResetSchema', () => {
+  it('새 비밀번호와 확인이 다르면 확인 필드에 알린다', () => {
+    const result = passwordResetSchema.safeParse({
+      password: 'Abcdefg1',
+      passwordConfirm: 'Abcdefg2',
+    });
+    expect(result.error?.issues).toMatchObject([
+      { path: ['passwordConfirm'], message: 'passwordMismatch' },
+    ]);
+  });
+});
+
+describe('birthDateSchema', () => {
+  it('YYYY-MM-DD 형식의 실제 날짜면 성공', () => {
+    expect(birthDateSchema.safeParse('1990-01-31').success).toBe(true);
+    expect(birthDateSchema.safeParse('2024-02-29').success).toBe(true);
+  });
+
+  it('형식이 다르면 실패', () => {
+    expect(birthDateSchema.safeParse('1990/01/01').success).toBe(false);
+    expect(birthDateSchema.safeParse('90-1-1').success).toBe(false);
+  });
+
+  it('달력에 없는 날짜면 실패', () => {
+    expect(birthDateSchema.safeParse('2023-02-30').success).toBe(false);
+    expect(birthDateSchema.safeParse('2023-02-29').success).toBe(false);
+    expect(birthDateSchema.safeParse('1990-13-01').success).toBe(false);
+  });
+
+  it('실패하면 문구 대신 번역 키를 담는다', () => {
+    const result = birthDateSchema.safeParse('1990-13-01');
+    expect(result.error?.issues[0]?.message).toBe('birthDateInvalid');
+  });
+});
+
+describe('profileUpdateSchema', () => {
+  it('avatarUrl은 http(s) URL 또는 null만 허용', () => {
+    expect(
+      profileUpdateSchema.safeParse({ avatarUrl: 'https://example.com/a.png' })
+        .success
+    ).toBe(true);
+    expect(profileUpdateSchema.safeParse({ avatarUrl: null }).success).toBe(
+      true
+    );
+    expect(
+      profileUpdateSchema.safeParse({ avatarUrl: 'not-a-url' }).success
+    ).toBe(false);
+    expect(
+      profileUpdateSchema.safeParse({
+        avatarUrl: `https://example.com/${'a'.repeat(2048)}`,
+      }).success
+    ).toBe(false);
+    expect(
+      profileUpdateSchema.safeParse({ avatarUrl: 'javascript:alert(1)' })
+        .success
+    ).toBe(false);
   });
 });

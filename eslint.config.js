@@ -1,60 +1,31 @@
 import js from '@eslint/js';
-import tseslint from 'typescript-eslint';
-import reactPlugin from 'eslint-plugin-react';
-import reactHooksPlugin from 'eslint-plugin-react-hooks';
-import nextPlugin from '@next/eslint-plugin-next';
-import prettierConfig from 'eslint-config-prettier';
+import { defineConfig, globalIgnores } from 'eslint/config';
+import nextVitals from 'eslint-config-next/core-web-vitals';
+import nextTypescript from 'eslint-config-next/typescript';
+import prettier from 'eslint-config-prettier/flat';
 
-export default tseslint.config(
+export default defineConfig([
+  globalIgnores([
+    '.next/**',
+    'out/**',
+    'build/**',
+    'dist/**',
+    'coverage/**',
+    'playwright-report/**',
+    'test-results/**',
+    'next-env.d.ts',
+    // 외부에서 가져온 스킬은 업스트림 원문을 유지한다.
+    '.agents/**',
+    // 다른 브랜치의 작업 공간
+    '.claude/worktrees/**',
+  ]),
   js.configs.recommended,
-  ...tseslint.configs.recommended,
+  ...nextVitals,
+  ...nextTypescript,
   {
-    files: ['**/*.{ts,tsx}'],
-    plugins: {
-      react: reactPlugin,
-      'react-hooks': reactHooksPlugin,
-      '@next/next': nextPlugin,
-    },
-    languageOptions: {
-      parserOptions: {
-        ecmaFeatures: {
-          jsx: true,
-        },
-      },
-    },
-    settings: {
-      react: {
-        version: 'detect',
-      },
-    },
+    name: 'project/rules',
+    files: ['**/*.{js,mjs,ts,tsx}'],
     rules: {
-      // React 규칙
-      'react/react-in-jsx-scope': 'off',
-      'react/prop-types': 'off',
-      'react/jsx-uses-react': 'off',
-
-      // React Hooks 규칙
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'warn',
-
-      // Next.js 규칙
-      '@next/next/no-html-link-for-pages': 'error',
-      '@next/next/no-img-element': 'warn',
-
-      // TypeScript 규칙
-      '@typescript-eslint/no-unused-vars': [
-        'error',
-        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
-      ],
-      '@typescript-eslint/no-explicit-any': 'warn',
-      '@typescript-eslint/explicit-function-return-type': 'off',
-      '@typescript-eslint/explicit-module-boundary-types': 'off',
-      '@typescript-eslint/consistent-type-imports': [
-        'error',
-        { prefer: 'type-imports', fixStyle: 'separate-type-imports' },
-      ],
-      '@typescript-eslint/no-non-null-assertion': 'warn',
-
       // 일반 규칙
       'no-console': ['warn', { allow: ['warn', 'error'] }],
       'prefer-const': 'error',
@@ -63,18 +34,71 @@ export default tseslint.config(
       'object-shorthand': ['warn', 'always'],
       'no-case-declarations': 'error',
       'no-fallthrough': 'error',
+      'no-var': 'error',
+      // 화살표 함수를 사용한다. export default function(Next.js 특수 파일)은 허용된다.
+      'func-style': ['error', 'expression'],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportNamespaceSpecifier',
+          message: '와일드카드 import 대신 이름 있는 import를 사용하세요.',
+        },
+        {
+          // 메서드, getter·setter, 제너레이터는 화살표 함수로 쓸 수 없으므로 제외한다.
+          selector:
+            ':not(MethodDefinition, Property[method=true], Property[kind=/^(get|set)$/]) > FunctionExpression[generator=false]',
+          message: 'function 대신 화살표 함수를 사용하세요.',
+        },
+      ],
     },
   },
   {
-    ignores: [
-      'node_modules/',
-      '.next/',
-      'out/',
-      'dist/',
-      'coverage/',
-      '*.config.js',
-      '*.config.ts',
-    ],
+    name: 'project/typescript',
+    files: ['**/*.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+      ],
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'error',
+      '@typescript-eslint/no-unused-expressions': 'error',
+      '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
+      '@typescript-eslint/consistent-type-imports': [
+        'error',
+        { prefer: 'type-imports', fixStyle: 'separate-type-imports' },
+      ],
+    },
   },
-  prettierConfig
-);
+  {
+    name: 'project/i18n-navigation',
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/lib/i18n/navigation.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'next/link',
+              message:
+                "locale이 유지되도록 '@/lib/i18n/navigation'의 Link를 사용하세요.",
+            },
+            {
+              name: 'next/navigation',
+              importNames: [
+                'redirect',
+                'permanentRedirect',
+                'usePathname',
+                'useRouter',
+              ],
+              message:
+                "locale이 유지되도록 '@/lib/i18n/navigation'에서 가져오세요.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  prettier,
+]);

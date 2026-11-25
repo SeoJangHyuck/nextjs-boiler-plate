@@ -1,6 +1,6 @@
 // 공통 타입 정의
 
-export type Locale = 'ko' | 'en';
+export type { Locale } from '@/lib/i18n/config';
 
 // API 응답 타입
 export type ApiResponse<T> = {
@@ -18,8 +18,8 @@ export type PaginatedResponse<T> = {
   totalPages: number;
 };
 
-// 에러 타입
-export type ApiError = {
+// 실패 응답 본문 타입
+export type ApiErrorBody = {
   code: string;
   message: string;
   details?: Record<string, unknown>;

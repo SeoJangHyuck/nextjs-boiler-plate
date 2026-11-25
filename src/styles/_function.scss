@@ -39,9 +39,8 @@
 /// @param {Number} $base-size - 변환 기준 px
 @function px-to-rem($pixel, $base-size: 16px) {
   @if math.unit($pixel) == 'px' {
-    // stylelint-disable
+    // stylelint-disable-next-line length-zero-no-unit
     @return calc(get-value($pixel) / get-value($base-size)) + 0rem;
-    // stylelint-enable
   } @else {
     @return $pixel;
   }
@@ -53,9 +52,8 @@
 /// @param {Number} $base-size - 변환 기준 px
 @function px-to-em($pixel, $base-size: 16px) {
   @if math.unit($pixel) == 'px' {
-    // stylelint-disable
+    // stylelint-disable-next-line length-zero-no-unit
     @return calc(get-value($pixel) / get-value($base-size)) + 0em;
-    // stylelint-enable
   } @else {
     @return $pixel;
   }
@@ -67,9 +65,8 @@
 /// @param {Number} $mm-px-ratio - mm 변환 비율
 @function px-to-mm($pixel, $mm-px-ratio: 3.7795) {
   @if math.unit($pixel) == 'px' {
-    // stylelint-disable
+    // stylelint-disable-next-line length-zero-no-unit
     @return calc(get-value($pixel) / $mm-px-ratio) + 0mm;
-    // stylelint-enable
   } @else {
     @return $pixel;
   }

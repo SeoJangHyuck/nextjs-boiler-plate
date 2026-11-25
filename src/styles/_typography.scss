@@ -104,10 +104,9 @@ $body-sizes: (
 /// @param {Number} $weight - font-weight (기본: 맵에 정의된 값)
 @mixin body($size: 'md', $weight: null) {
   $config: map.get($body-sizes, $size);
-  $default-weight: map.get($config, 'weight');
 
   font-size: map.get($config, 'size');
-  font-weight: if($weight, $weight, $default-weight);
+  font-weight: $weight or map.get($config, 'weight');
   letter-spacing: 0;
   line-height: map.get($config, 'line-height');
 }

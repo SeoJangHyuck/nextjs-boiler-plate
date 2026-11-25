@@ -1,8 +1,13 @@
 {
+  "metadata": {
+    "title": "Next.js Boilerplate",
+    "description": "A general-purpose Next.js 16 starter template."
+  },
   "common": {
     "appName": "Next.js Boilerplate",
     "loading": "Loading...",
     "error": "An error occurred",
+    "retry": "Try again",
     "notFound": "Page not found",
     "notFoundDescription": "The page you requested does not exist or may have been moved.",
     "backToHome": "Back to home"
@@ -20,5 +25,19 @@
     "ko": "한국어",
     "en": "English",
     "switch": "Change language"
+  },
+  "validation": {
+    "invalid": "Please check this value",
+    "emailInvalid": "Enter a valid email address",
+    "passwordRequired": "Enter your password",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "passwordTooLong": "Password must be 128 characters or fewer",
+    "passwordCriteria": "Use at least 3 of: lowercase letters, uppercase letters, numbers, symbols",
+    "passwordMismatch": "Passwords do not match",
+    "nicknameTooShort": "Nickname must be at least 2 characters",
+    "nicknameTooLong": "Nickname must be 20 characters or fewer",
+    "nicknameCharacters": "Use only Korean or English letters and numbers",
+    "birthDateInvalid": "Enter a valid date (YYYY-MM-DD)",
+    "urlInvalid": "Enter a valid URL"
   }
 }

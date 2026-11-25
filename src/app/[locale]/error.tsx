@@ -1,29 +1,38 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useQueryErrorResetBoundary } from '@tanstack/react-query';
 import { useTranslations } from 'next-intl';
 
-interface ErrorProps {
-  error: Error & { digest?: string };
-  reset: () => void;
-}
+type ErrorPageProps = {
+  error: unknown;
+  retry: () => void;
+};
 
-export default function Error({ error, reset }: ErrorProps) {
+export default function ErrorPage({ error, retry }: ErrorPageProps) {
   const t = useTranslations('common');
+  const { reset } = useQueryErrorResetBoundary();
+
+  // 실패한 Suspense 쿼리는 초기화해야 다시 요청한다.
+  const handleRetry = () => {
+    reset();
+    retry();
+  };
 
   useEffect(() => {
     console.error(error);
   }, [error]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center p-8">
-      <h2 className="mb-4 text-2xl font-bold">{t('error')}</h2>
+    <main className="flex min-h-screen flex-col items-center justify-center p-8">
+      <h1 className="mb-4 text-2xl font-bold">{t('error')}</h1>
       <button
-        onClick={reset}
-        className="rounded-lg bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+        type="button"
+        onClick={handleRetry}
+        className="rounded-lg bg-primary px-4 py-2 text-background transition-colors hover:bg-primary-light"
       >
-        다시 시도
+        {t('retry')}
       </button>
-    </div>
+    </main>
   );
 }
